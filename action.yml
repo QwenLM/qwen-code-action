@@ -13,6 +13,9 @@ inputs:
   OPENAI_BASE_URL:
     description: 'Your Qwen Code base URL.'
     required: true
+  OPENAI_MODEL:
+    description: 'Your Qwen Code model.'
+    required: true
   settings_json:
     description: |
       A JSON string to configure the Qwen Code. This will be written to .qwen/settings.json.
