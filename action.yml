@@ -1,0 +1,80 @@
+name: 'Qwen Code Action'
+description: 'Uses the Qwen Code to automate software development tasks.'
+author: 'Qwen'
+
+inputs:
+  prompt:
+    description: 'A specific prompt to guide Qwen Code.'
+    required: false
+    default: 'You are a helpful assistant.'
+  OPENAI_API_KEY:
+    description: 'Your Qwen Code API key.'
+    required: true
+  OPENAI_BASE_URL:
+    description: 'Your Qwen Code base URL.'
+    required: true
+  settings_json:
+    description: |
+      A JSON string to configure the Qwen Code. This will be written to .qwen/settings.json.
+    required: false
+  version:
+    description: |
+      The version of @qwen-code/qwen-code to execute.
+      Can be a specific version from npm (e.g., '0.1.0', 'latest'), a branch name (e.g., 'main'), or a commit hash.
+    required: false
+    default: 'latest'
+outputs:
+  summary:
+    description: "The summarized output from the Qwen Code execution."
+    value: ${{ steps.qwen_run.outputs.qwen_result }}
+runs:
+  using: "composite"
+  steps:
+    - name: Configure Qwen Code
+      if: inputs.settings_json != ''
+      run: |
+        mkdir -p .qwen
+        echo "$SETTINGS_JSON" > .qwen/settings.json
+      shell: bash
+      env:
+        SETTINGS_JSON: ${{ inputs.settings_json }}
+
+    - name: Install Qwen Code
+      id: install
+      run: |
+        if [[ "${{ inputs.version }}" == "latest" || "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9\.-]+)?(\+[a-zA-Z0-9\.-]+)?$ ]]; then
+          echo "Installing Qwen Code from npm: @qwen-code/qwen-code@${{ inputs.version }}"
+          npm install -g @qwen-code/qwen-code@${{ inputs.version }}
+        else
+          echo "Installing Qwen Code from GitHub: github:qwen-code/qwen-code#${{ inputs.version }}"
+          npm install -g github:qwen-code/qwen-code#${{ inputs.version }}
+        fi
+        echo "Verifying installation:"
+        if command -v qwen >/dev/null 2>&1; then
+          qwen --version || echo "Qwen Code installed successfully (version command not available)"
+        else
+          echo "Error: Qwen Code not found in PATH"
+          exit 1
+        fi
+      shell: bash
+
+    - name: Run Qwen Code
+      id: qwen_run
+      run: |
+        set -e
+        QWEN_RESPONSE=$(qwen --yolo --prompt "$PROMPT")
+        # Set the captured response as a step output, supporting multiline
+        echo "qwen_result<<EOF" >> "$GITHUB_OUTPUT"
+        echo "$QWEN_RESPONSE" >> "$GITHUB_OUTPUT"
+        echo "EOF" >> "$GITHUB_OUTPUT"
+        echo "$QWEN_RESPONSE"
+      shell: bash
+      env:
+        OPENAI_API_KEY: ${{ inputs.OPENAI_API_KEY }}
+        OPENAI_BASE_URL: ${{ inputs.OPENAI_BASE_URL }}
+        PROMPT: ${{ inputs.prompt }}
+        SURFACE: GitHub
+
+branding:
+  icon: 'terminal'
+  color: 'blue'
