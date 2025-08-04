@@ -72,6 +72,7 @@ runs:
       env:
         OPENAI_API_KEY: ${{ inputs.OPENAI_API_KEY }}
         OPENAI_BASE_URL: ${{ inputs.OPENAI_BASE_URL }}
+        OPENAI_MODEL: ${{ inputs.OPENAI_MODEL }}
         PROMPT: ${{ inputs.prompt }}
         SURFACE: GitHub
 
