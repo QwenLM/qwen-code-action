@@ -1,7 +1,7 @@
 {
-  "name": "run-gemini-cli",
-  "version": "0.1.16",
-  "description": "This works with our versioning tools, this is NOT an NPM repo",
+  "name": "qwen-code-action",
+  "version": "0.1.0",
+  "description": "GitHub Action for Qwen Code CLI integration",
   "scripts": {
     "build": "echo \"No build required for composite action\"",
     "docs": "./node_modules/.bin/actions-gen-readme",
@@ -13,18 +13,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/google-github-actions/run-gemini-cli.git"
+    "url": "git+https://github.com/QwenLM/qwen-code-action.git"
   },
   "keywords": [
-    "gemini",
-    "gemini-cli"
+    "qwen",
+    "qwen-code",
+    "qwen-code-cli",
+    "ai",
+    "code-review"
   ],
-  "author": "Google",
+  "author": "Alibaba Cloud",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/google-github-actions/run-gemini-cli/issues"
+    "url": "https://github.com/QwenLM/qwen-code-action/issues"
   },
-  "homepage": "https://github.com/google-github-actions/run-gemini-cli#readme",
+  "homepage": "https://github.com/QwenLM/qwen-code-action#readme",
   "devDependencies": {
     "@google-github-actions/actions-utils": "^0.8.10"
   }

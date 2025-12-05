@@ -1,4 +1,4 @@
-description = "Triages an issue with Gemini CLI"
+description = "Triages an issue with Qwen Code CLI"
 prompt = """
 ## Role
 
