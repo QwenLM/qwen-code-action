@@ -1,8 +1,8 @@
-# Contributing to run-gemini-cli
+# Contributing to qwen-code-action
 
-First off, thank you for considering contributing to the run-gemini-cli!
+First off, thank you for considering contributing to the qwen-code-action!
 
-- [Contributing to run-gemini-cli](#contributing-to-run-gemini-cli)
+- [Contributing to qwen-code-action](#contributing-to-qwen-code-action)
   - [Overview](#overview)
   - [Prerequisites](#prerequisites)
   - [Development Setup](#development-setup)
@@ -20,7 +20,7 @@ First off, thank you for considering contributing to the run-gemini-cli!
 
 ## Overview
 
-This project is a composite GitHub Action that integrates Gemini AI into GitHub workflows. We welcome contributions including bug fixes, feature enhancements, documentation improvements, and new workflow examples.
+This project is a composite GitHub Action that integrates Qwen AI into GitHub workflows. We welcome contributions including bug fixes, feature enhancements, documentation improvements, and new workflow examples.
 
 ## Prerequisites
 
@@ -34,19 +34,22 @@ Before contributing, ensure you have:
 1. **Fork and Clone the Repository**
    - Fork the repository on GitHub by clicking the "Fork" button
    - Clone your forked repository to your local machine:
+
      ```sh
-     git clone https://github.com/YOUR_USERNAME/run-gemini-cli.git
-     cd run-gemini-cli
+     git clone https://github.com/YOUR_USERNAME/qwen-code-action.git
+     cd qwen-code-action
      ```
 
 2. **Set Upstream Remote**
    - Add the original repository as the `upstream` remote:
+
      ```sh
-     git remote add upstream https://github.com/google-github-actions/run-gemini-cli.git
+     git remote add upstream https://github.com/QwenLM/qwen-code-action.git
      ```
 
 3. **Install Dependencies**
    - Install the required Node.js dependencies:
+
      ```sh
      npm install
      ```
@@ -55,6 +58,7 @@ Before contributing, ensure you have:
 
 1. **Create a Branch**
     - Create a new branch for your changes. Use a descriptive name:
+
       ```sh
       git checkout -b feature/your-descriptive-branch-name
       ```
@@ -62,19 +66,22 @@ Before contributing, ensure you have:
 2. **Make Your Changes**
     - Implement your changes following the [development guidelines](#development-guidelines)
     - If you modify `action.yml` inputs or outputs, update the documentation:
+
       ```sh
       npm run docs
       ```
-    - If you update workflow files in `/.gemini/workflows/`, run `./scripts/generate-examples.sh` to auto-generate the examples.
+
+    - If you update workflow files in `/.qwen/workflows/`, run `./scripts/generate-examples.sh` to auto-generate the examples.
 
 3. **Commit Your Changes**
     - Commit with a descriptive message following [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
-    
+
     **Example of a detailed commit message:**
+
     ```sh
     git commit -m "feat: add custom timeout support for workflow execution
 
-    Users reported workflow failures in large repositories where Gemini CLI
+    Users reported workflow failures in large repositories where Qwen Code
     operations exceed the default GitHub Actions timeout limit. This causes
     incomplete analysis and frustrating failures for complex codebases.
 
@@ -92,6 +99,7 @@ Before contributing, ensure you have:
 
 4. **Keep Your Fork Synced**
     - Sync your `main` branch with the `upstream` repository:
+
       ```sh
       git checkout main
       git pull upstream main
@@ -99,6 +107,7 @@ Before contributing, ensure you have:
 
 5. **Rebase Your Branch**
     - Rebase your feature branch on top of the latest `main`:
+
       ```sh
       git checkout feature/your-descriptive-branch-name
       git rebase main
@@ -106,6 +115,7 @@ Before contributing, ensure you have:
 
 6. **Push Your Changes**
     - Push your changes to your forked repository:
+
       ```sh
       git push --force-with-lease origin feature/your-descriptive-branch-name
       ```
@@ -122,17 +132,20 @@ When contributing to this composite GitHub Action:
 Follow these principles when contributing to this composite GitHub Action:
 
 #### Security
+
 - **Principle of least privilege**: Request only necessary permissions
 - **Validate inputs**: Sanitize user inputs to prevent security issues
 - **Secure defaults**: Choose the most secure configuration options
 
 #### Code Quality
+
 - **Clear naming**: Use descriptive variable and function names
 - **Error handling**: Provide meaningful error messages with context
 - **Shell best practices**: Write portable, robust shell scripts
 - **Documentation**: Keep code and documentation synchronized
 
 #### Action Standards
+
 - **YAML consistency**: Use consistent formatting and structure
 - **Input/output documentation**: Clearly describe all parameters
 - **Version management**: Pin dependencies to specific versions
@@ -141,10 +154,10 @@ Follow these principles when contributing to this composite GitHub Action:
 
 Before submitting your PR:
 
--  **Validate action.yml**: Ensure the manifest is valid YAML
--  **Test workflows**: Verify example workflows work as expected
--  **Check documentation**: Ensure all examples and references are accurate
--  **Lint shell scripts**: Use tools like `shellcheck` for script validation
+- **Validate action.yml**: Ensure the manifest is valid YAML
+- **Test workflows**: Verify example workflows work as expected
+- **Check documentation**: Ensure all examples and references are accurate
+- **Lint shell scripts**: Use tools like `shellcheck` for script validation
 
 ## Documentation
 
@@ -161,6 +174,7 @@ When making changes:
 The inputs and outputs documentation in `README.md` is automatically generated from `action.yml`. After modifying `action.yml`:
 
 1. Run the documentation update script:
+
    ```sh
    npm run docs
    ```
@@ -175,4 +189,4 @@ Once you submit a pull request, a member of the team will review your changes. W
 
 ## Community & Communication
 
-If you have any questions or need help with your contribution, you can reach out to us on [GitHub Discussions](https://github.com/google-github-actions/run-gemini-cli/discussions).
+If you have any questions or need help with your contribution, you can reach out to us on [GitHub Discussions](https://github.com/QwenLM/qwen-code-action/discussions).

@@ -1,4 +1,4 @@
-description = "Fixes an issue with Gemini CLI"
+description = "Fixes an issue with Qwen Code"
 prompt = """
 <prompt>
     <role>
@@ -23,10 +23,10 @@ prompt = """
         <description>Follow these steps sequentially to resolve the issue.</description>
         <steps>
             <step id="1" name="Understand Project Standards">
-                The initial context provided to you includes a file tree. If you see a `GEMINI.md` or `CONTRIBUTING.md` file, use the GitHub MCP `get_file_contents` tool to read it first. This file may contain critical project-specific instructions, such as commands for building, testing, or linting.
+                The initial context provided to you includes a file tree. If you see a `QWEN.md` or `CONTRIBUTING.md` file, use the GitHub MCP `get_file_contents` tool to read it first. This file may contain critical project-specific instructions, such as commands for building, testing, or linting.
             </step>
             <step id="2" name="Acknowledge and Plan">
-                1. Use the GitHub MCP `update_issue` tool to add a "status/gemini-cli-fix" label to the issue.
+                1. Use the GitHub MCP `update_issue` tool to add a "status/qwen-code-fix" label to the issue.
                 2. Use the `gh issue comment` CLI tool command to post an initial comment. In this comment, you must:
                     - State the problem in your own words.
                     - Briefly describe the current state of the relevant code.
@@ -42,7 +42,7 @@ prompt = """
                 Use tools, like the GitHub MCP `search_code` and GitHub MCP `get_file_contents` tools, to explore the codebase and implement the necessary code changes. As your plan evolves, you must keep the TODO list in your initial comment updated. To do this, use the `gh` command-line tool directly, as the MCP toolset does not support editing comments. Use the following command: `gh issue comment --edit-last --body "..."`
             </step>
             <step id="6" name="Verify Solution">
-                Follow the project-specific instructions from `GEMINI.md` or `CONTRIBUTING.md` to run builds, linters, and tests. Ensure your changes have not introduced any regressions.
+                Follow the project-specific instructions from `QWEN.md` or `CONTRIBUTING.md` to run builds, linters, and tests. Ensure your changes have not introduced any regressions.
             </step>
             <step id="7" name="Commit the changes">
                 Commit the changes to the branch `!{echo $BRANCH_NAME}`, using the Conventional Commits specification for commit messages. Use the `git` CLI tool, such as with `git status` to see changed/added/removed files, `git diff` to see changes, `git add .` to stage all changes files, and `git commit -m '<my commit message>'`.
@@ -80,9 +80,9 @@ prompt = """
         <agent_response>
             <thinking>
                 1.  **Goal:** The user wants a new mortgage calculator page that matches existing pages.
-                2.  **Action: Add Label:** First, I must label the issue as in-progress. `update_issue(add_label: "status/gemini-cli-fix")`.
-                3.  **Initial Context:** The file tree shows `CreditPaydown.tsx` and `StudentLoan.tsx`. This suggests a component-based frontend structure, likely React. There is also a `GEMINI.md`.
-                4.  **Action: Read `GEMINI.md`:** `get_file_contents('GEMINI.md')`. The file says to use `npm install`, `npm run test`, and `npm run build`.
+                2.  **Action: Add Label:** First, I must label the issue as in-progress. `update_issue(add_label: "status/qwen-code-fix")`.
+                3.  **Initial Context:** The file tree shows `CreditPaydown.tsx` and `StudentLoan.tsx`. This suggests a component-based frontend structure, likely React. There is also a `QWEN.md`.
+                4.  **Action: Read `QWEN.md`:** `get_file_contents('QWEN.md')`. The file says to use `npm install`, `npm run test`, and `npm run build`.
                 5.  **Action: Investigate existing code:** `get_file_contents('CreditPaydown.tsx')`. I see it uses React, TypeScript, and Tailwind CSS. The logic is self-contained.
                 6.  **Plan Formation:** I will create a new file, `MortgageCalculator.tsx`, based on the structure of the existing calculator components. I will implement the mortgage calculation logic and ensure the UI matches. Then I will add a unit test and verify the project builds.
                 7.  **Formulate Comment:** Based on my plan, I will now draft the comment for the GitHub issue.
