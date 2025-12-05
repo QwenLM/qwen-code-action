@@ -1,0 +1,70 @@
+name: '🧙 Qwen Issue Fixer'
+
+on:
+  workflow_call:
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-${{ github.event.issue.number }}'
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: 'bash'
+
+jobs:
+  create-pr:
+    timeout-minutes: 30
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'write'      # Enable reading and modifying code
+      id-token: 'write'      # Enable minting an identity token
+      issues: 'write'        # Enable updating issues, such as posting a comment
+      pull-requests: 'write' # Enable creating pull requests
+
+    steps:
+      # Mint a token so that the comments show up as gemini-cli instead of github-actions.
+      - name: 'Mint identity token'
+        id: 'mint_identity_token'
+        if: |-
+          ${{ vars.APP_ID }}
+        uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b' # ratchet:actions/create-github-app-token@v2
+        with:
+          app-id: '${{ vars.APP_ID }}'
+          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
+          permission-contents: 'write'
+          permission-issues: 'write'
+          permission-pull-requests: 'write'
+
+      - name: 'Checkout repository'
+        uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
+
+      - name: 'Run Qwen PR Create'
+        uses: 'QwenLM/qwen-code-action@v1'
+        id: 'qwen_pr_create'
+        env:
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          REPOSITORY: '${{ github.repository }}'
+          ISSUE_NUMBER: '${{ github.event.issue.number }}'
+          ISSUE_TITLE: '${{ github.event.issue.title }}'
+          ISSUE_BODY: '${{ github.event.issue.body }}'
+          BRANCH_NAME: 'qwen-fix-${{ github.event.issue.number }}'
+          EVENT_NAME: '${{ github.event_name }}'
+          TRIGGERING_ACTOR: '${{ github.triggering_actor }}'
+        with:
+          qwen_api_key: '${{ secrets.QWEN_API_KEY }}'
+          qwen_model: '${{ vars.QWEN_MODEL }}'
+          debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
+          upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
+          settings: |-
+            {
+              "debug": ${{ fromJSON(env.DEBUG || env.ACTIONS_STEP_DEBUG || false) }},
+              "model": {
+                "maxSessionTurns": 200
+              },
+              "telemetry": {
+                "enabled": true,
+                "target": "local",
+                "outfile": ".qwen/telemetry.log"
+              }
+            }
+          prompt: '/qwen-issue-fixer'

@@ -1,0 +1,3 @@
+* @google-github-actions/maintainers @google-github-actions/run-gemini-cli-maintainers
+
+.github/CODEOWNERS @google-github-actions/maintainers

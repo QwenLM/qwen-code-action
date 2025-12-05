@@ -1,83 +1,312 @@
-name: 'Qwen Code Action'
-description: 'Uses the Qwen Code to automate software development tasks.'
-author: 'Qwen'
+# Copyright 2025 Alibaba Cloud
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: 'Run Qwen Code CLI'
+author: 'Alibaba Cloud'
+description: |-
+  Invoke the Qwen Code CLI from a GitHub Action.
 
 inputs:
-  prompt:
-    description: 'A specific prompt to guide Qwen Code.'
+  openai_api_key:
+    description: 'The API key for Qwen Code API (DashScope compatible).'
+    required: true
+  openai_base_url:
+    description: 'The base URL for Qwen Code API endpoint.'
     required: false
-    default: 'You are a helpful assistant.'
-  OPENAI_API_KEY:
-    description: 'Your Qwen Code API key.'
-    required: true
-  OPENAI_BASE_URL:
-    description: 'Your Qwen Code base URL.'
-    required: true
-  OPENAI_MODEL:
-    description: 'Your Qwen Code model.'
-    required: true
-  settings_json:
-    description: |
-      A JSON string to configure the Qwen Code. This will be written to .qwen/settings.json.
+    default: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+  openai_model:
+    description: 'The Qwen Code model to use.'
     required: false
-  version:
-    description: |
-      The version of @qwen-code/qwen-code to execute.
-      Can be a specific version from npm (e.g., '0.1.0', 'latest'), a branch name (e.g., 'main'), or a commit hash.
+    default: 'qwen-coder-plus-latest'
+  qwen_cli_version:
+    description: 'The version of the Qwen Code CLI to install. Can be "latest", "preview", "nightly", a specific version number, or a git branch, tag, or commit.'
     required: false
     default: 'latest'
+  qwen_debug:
+    description: 'Enable debug logging and output streaming.'
+    required: false
+  prompt:
+    description: |-
+      A string passed to the Qwen Code CLI's `--prompt` argument.
+    required: false
+    default: 'You are a helpful assistant.'
+  settings:
+    description: |-
+      A JSON string written to `.qwen/settings.json` to configure the CLI's _project_ settings.
+    required: false
+  extensions:
+    description: 'A list of Qwen Code CLI extensions to install.'
+    required: false
+  upload_artifacts:
+    description: 'Whether to upload artifacts to the github action.'
+    required: false
+    default: 'false'
+  use_pnpm:
+    description: 'Whether or not to use pnpm instead of npm to install qwen-cli'
+    required: false
+    default: 'false'
+  workflow_name:
+    description: 'The GitHub workflow name, used for telemetry purposes.'
+    required: false
+    default: '${{ github.workflow }}'
+
 outputs:
   summary:
-    description: "The summarized output from the Qwen Code execution."
-    value: ${{ steps.qwen_run.outputs.qwen_result }}
-runs:
-  using: "composite"
-  steps:
-    - name: Configure Qwen Code
-      if: inputs.settings_json != ''
-      run: |
-        mkdir -p .qwen
-        echo "$SETTINGS_JSON" > .qwen/settings.json
-      shell: bash
-      env:
-        SETTINGS_JSON: ${{ inputs.settings_json }}
+    description: 'The summarized output from the Qwen Code CLI execution.'
+    value: '${{ steps.qwen_run.outputs.qwen_response }}'
+  error:
+    description: 'The error output from the Qwen Code CLI execution, if any.'
+    value: '${{ steps.qwen_run.outputs.qwen_errors }}'
 
-    - name: Install Qwen Code
-      id: install
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Validate Inputs'
+      id: 'validate_inputs'
+      shell: 'bash'
+      run: |-
+        set -exuo pipefail
+
+        # Emit a clear warning in three places without failing the step
+        warn() {
+          local msg="$1"
+          echo "WARNING: ${msg}" >&2
+          echo "::warning title=Input validation::${msg}"
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+            {
+              echo "### Input validation warnings"
+              echo
+              echo "- ${msg}"
+            } >> "${GITHUB_STEP_SUMMARY}"
+          fi
+        }
+
+        # Validate that API key is provided
+        if [[ "${INPUT_OPENAI_API_KEY_PRESENT:-false}" != "true" ]]; then
+          warn "No API key provided. Please provide 'openai_api_key'."
+        fi
+      env:
+        INPUT_OPENAI_API_KEY_PRESENT: "${{ inputs.openai_api_key != '' }}"
+
+    - name: 'Sanitize workflow name'
+      id: 'sanitize_workflow_name'
+      shell: 'bash'
       run: |
-        if [[ "${{ inputs.version }}" == "latest" || "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9\.-]+)?(\+[a-zA-Z0-9\.-]+)?$ ]]; then
-          echo "Installing Qwen Code from npm: @qwen-code/qwen-code@${{ inputs.version }}"
-          npm install -g @qwen-code/qwen-code@${{ inputs.version }}
+        SANITIZED=$(echo "${WORKFLOW_NAME}" | sed 's/[^ a-zA-Z0-9-]//g' | xargs | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
+        echo "gh_workflow_name=$SANITIZED" >> $GITHUB_OUTPUT
+      env:
+        WORKFLOW_NAME: '${{ inputs.workflow_name }}'
+
+    - name: 'Configure Qwen Code CLI'
+      if: |-
+        ${{ inputs.settings != '' }}
+      run: |-
+        mkdir -p .qwen/
+        echo "${SETTINGS}" > ".qwen/settings.json"
+      shell: 'bash'
+      env:
+        SETTINGS: '${{ inputs.settings }}'
+
+    - name: 'Install Custom Commands'
+      shell: 'bash'
+      run: |-
+        set -euo pipefail
+        mkdir -p .qwen/commands
+        cp -r "${GITHUB_ACTION_PATH}/.github/commands/"* .qwen/commands/
+      env:
+        GITHUB_ACTION_PATH: '${{ github.action_path }}'
+
+    - name: 'Authenticate to Google Cloud'
+      if: 'false'
+      id: 'auth'
+      uses: 'google-github-actions/auth@v2' # ratchet:exclude
+      with:
+        project_id: ''
+        workload_identity_provider: ''
+        service_account: ''
+        token_format: ''
+        access_token_scopes: ''
+
+    - name: 'Install pnpm'
+      if: |-
+        ${{ inputs.use_pnpm == 'true' }}
+      uses: 'pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061' # ratchet:pnpm/action-setup@v4
+      with:
+        version: 10
+
+    - name: 'Install Qwen Code CLI'
+      id: 'install'
+      env:
+        QWEN_CLI_VERSION: '${{ inputs.qwen_cli_version }}'
+        EXTENSIONS: '${{ inputs.extensions }}'
+        USE_PNPM: '${{ inputs.use_pnpm }}'
+      shell: 'bash'
+      run: |-
+        set -euo pipefail
+
+        VERSION_INPUT="${QWEN_CLI_VERSION:-latest}"
+
+        if [[ "${VERSION_INPUT}" == "latest" || "${VERSION_INPUT}" == "preview" || "${VERSION_INPUT}" == "nightly" || "${VERSION_INPUT}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9\.-]+)?(\+[a-zA-Z0-9\.-]+)?$ ]]; then
+          echo "Installing Qwen Code CLI from npm: @qwen-code/qwen-code@${VERSION_INPUT}"
+          if [[ "${USE_PNPM}" == "true" ]]; then
+            pnpm add --silent --global @qwen-code/qwen-code@"${VERSION_INPUT}"
+          else
+            npm install --silent --no-audit --prefer-offline --global @qwen-code/qwen-code@"${VERSION_INPUT}"
+          fi
         else
-          echo "Installing Qwen Code from GitHub: github:qwen-code/qwen-code#${{ inputs.version }}"
-          npm install -g github:qwen-code/qwen-code#${{ inputs.version }}
+          echo "Installing Qwen Code CLI from GitHub: github:QwenLM/qwen-code-cli#${VERSION_INPUT}"
+          git clone https://github.com/QwenLM/qwen-code-cli.git
+          cd qwen-code-cli
+          git checkout "${VERSION_INPUT}"
+          npm install
+          npm run bundle
+          npm install --silent --no-audit --prefer-offline --global .
         fi
         echo "Verifying installation:"
         if command -v qwen >/dev/null 2>&1; then
-          qwen --version || echo "Qwen Code installed successfully (version command not available)"
+          qwen --version || echo "Qwen Code CLI installed successfully (version command not available)"
         else
-          echo "Error: Qwen Code not found in PATH"
+          echo "Error: Qwen Code CLI not found in PATH"
           exit 1
         fi
-      shell: bash
+        if [[ -n "${EXTENSIONS}" ]]; then
+          echo "Installing Qwen Code CLI extensions:"
+          echo "${EXTENSIONS}" | jq -r '.[]' | while IFS= read -r extension; do
+            extension=$(echo "${extension}" | xargs)
+            if [[ -n "${extension}" ]]; then
+              echo "Installing ${extension}..."
+              echo "Y" | qwen extensions install "${extension}"
+            fi
+          done
+        fi
 
-    - name: Run Qwen Code
-      id: qwen_run
-      run: |
-        set -e
-        QWEN_RESPONSE=$(qwen --yolo --prompt "$PROMPT")
+    - name: 'Run Qwen Code CLI'
+      id: 'qwen_run'
+      shell: 'bash'
+      run: |-
+        set -euo pipefail
+
+        # Create a temporary directory for storing the output, and ensure it's
+        # cleaned up later
+        TEMP_STDOUT="$(mktemp -p "${RUNNER_TEMP}" qwen-out.XXXXXXXXXX)"
+        TEMP_STDERR="$(mktemp -p "${RUNNER_TEMP}" qwen-err.XXXXXXXXXX)"
+        function cleanup {
+          rm -f "${TEMP_STDOUT}" "${TEMP_STDERR}"
+        }
+        trap cleanup EXIT
+
+        # Keep track of whether we've failed
+        FAILED=false
+
+        # Run Qwen Code CLI with the provided prompt, using JSON output format
+        if [[ "${DEBUG}" = true ]]; then
+          echo "::warning::Qwen Code CLI debug logging is enabled. This will stream responses, which could reveal sensitive information if processed with untrusted inputs."
+        fi
+
+        # We capture stdout (JSON) to TEMP_STDOUT and stderr to TEMP_STDERR
+        if ! qwen --yolo --prompt "${PROMPT}" --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}"; then
+          FAILED=true
+        fi
+
+        if [[ "${DEBUG}" = true ]]; then
+          echo "::: Start Qwen Code CLI STDOUT :::"
+          cat "${TEMP_STDOUT}"
+          echo "::: End Qwen Code CLI STDOUT :::"
+        fi
+
+        # Create the artifacts directory and copy full logs
+        mkdir -p qwen-artifacts
+        cp "${TEMP_STDOUT}" qwen-artifacts/stdout.log
+        cp "${TEMP_STDERR}" qwen-artifacts/stderr.log
+        if [[ -f .qwen/telemetry.log ]]; then
+          cp .qwen/telemetry.log qwen-artifacts/telemetry.log
+        else
+          # Create an empty file so the artifact upload doesn't fail if telemetry is missing
+          touch qwen-artifacts/telemetry.log
+        fi
+
+        # Parse JSON output to extract response and errors
+        # The Qwen CLI outputs an array of event objects, extract assistant message content
+        RESPONSE=""
+        ERROR_JSON=""
+        if jq -e . "${TEMP_STDOUT}" >/dev/null 2>&1; then
+           # Extract the text from assistant message content
+           RESPONSE=$(jq -r '[.[] | select(.type == "assistant")] | last | .message.content[] | select(.type == "text") | .text' "${TEMP_STDOUT}")
+        fi
+        
+        if jq -e . "${TEMP_STDERR}" >/dev/null 2>&1; then
+           ERROR_JSON=$(jq -c '.error // empty' "${TEMP_STDERR}")
+        fi
+        if ! jq -e . "${TEMP_STDOUT}" >/dev/null 2>&1; then
+          echo "::warning::Qwen Code CLI stdout was not valid JSON"
+        fi
+        if [[ -s "${TEMP_STDERR}" ]] && ! jq -e . "${TEMP_STDERR}" >/dev/null 2>&1; then
+          echo "::warning::Qwen Code CLI stderr was not empty but not valid JSON"
+        fi
+
+
         # Set the captured response as a step output, supporting multiline
-        echo "qwen_result<<EOF" >> "$GITHUB_OUTPUT"
-        echo "$QWEN_RESPONSE" >> "$GITHUB_OUTPUT"
-        echo "EOF" >> "$GITHUB_OUTPUT"
-        echo "$QWEN_RESPONSE"
-      shell: bash
+        echo "qwen_response<<EOF" >> "${GITHUB_OUTPUT}"
+        if [[ -n "${RESPONSE}" ]]; then
+          echo "${RESPONSE}" >> "${GITHUB_OUTPUT}"
+        else
+          cat "${TEMP_STDOUT}" >> "${GITHUB_OUTPUT}"
+        fi
+        echo "EOF" >> "${GITHUB_OUTPUT}"
+
+        # Set the captured errors as a step output, supporting multiline
+        echo "qwen_errors<<EOF" >> "${GITHUB_OUTPUT}"
+        if [[ -n "${ERROR_JSON}" ]]; then
+          echo "${ERROR_JSON}" >> "${GITHUB_OUTPUT}"
+        else
+          cat "${TEMP_STDERR}" >> "${GITHUB_OUTPUT}"
+        fi
+        echo "EOF" >> "${GITHUB_OUTPUT}"
+
+        if [[ "${FAILED}" = true ]]; then
+          # If we have a structured error from JSON, use it for the error message
+          if [[ -n "${ERROR_JSON}" ]]; then
+             ERROR_MSG=$(jq -r '.message // .' <<< "${ERROR_JSON}")
+             echo "::error title=Qwen Code CLI execution failed::${ERROR_MSG}"
+          fi
+          echo "::: Start Qwen Code CLI STDERR :::"
+          cat "${TEMP_STDERR}"
+          echo "::: End Qwen Code CLI STDERR :::"
+          exit 1
+        fi
       env:
-        OPENAI_API_KEY: ${{ inputs.OPENAI_API_KEY }}
-        OPENAI_BASE_URL: ${{ inputs.OPENAI_BASE_URL }}
-        OPENAI_MODEL: ${{ inputs.OPENAI_MODEL }}
-        PROMPT: ${{ inputs.prompt }}
-        SURFACE: GitHub
+        DEBUG: '${{ fromJSON(inputs.qwen_debug || false) }}'
+        OPENAI_API_KEY: '${{ inputs.openai_api_key }}'
+        OPENAI_BASE_URL: '${{ inputs.openai_base_url }}'
+        OPENAI_MODEL: '${{ inputs.openai_model }}'
+        SURFACE: 'GitHub'
+        PROMPT: '${{ inputs.prompt }}'
+        GH_WORKFLOW_NAME: '${{ steps.sanitize_workflow_name.outputs.gh_workflow_name }}'
+
+    - name: 'Upload Qwen Code CLI outputs'
+      if: |-
+        ${{ inputs.upload_artifacts == 'true' }}
+      uses: 'actions/upload-artifact@v4' # ratchet:exclude
+      with:
+        name: 'qwen-output'
+        path: 'qwen-artifacts/'
+
+    - name: 'Upload Telemetry to Google Cloud'
+      if: 'false'
+      shell: 'bash'
+      run: |-
+        echo "Telemetry upload is disabled for Qwen Code CLI"
 
 branding:
   icon: 'terminal'
