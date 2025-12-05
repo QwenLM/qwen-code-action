@@ -1,4 +1,4 @@
-name: '📋 Gemini Scheduled Issue Triage'
+name: '📋 Qwen Code Scheduled Issue Triage'
 
 on:
   schedule:
@@ -8,13 +8,13 @@ on:
       - 'main'
       - 'release/**/*'
     paths:
-      - '.github/workflows/gemini-scheduled-triage.yml'
+      - '.github/workflows/qwen-scheduled-triage.yml'
   push:
     branches:
       - 'main'
       - 'release/**/*'
     paths:
-      - '.github/workflows/gemini-scheduled-triage.yml'
+      - '.github/workflows/qwen-scheduled-triage.yml'
   workflow_dispatch:
 
 concurrency:
@@ -85,30 +85,24 @@ jobs:
           ISSUE_COUNT="$(echo "${ISSUES}" | jq 'length')"
           echo "✅ Found ${ISSUE_COUNT} issue(s) to triage! 🎯"
 
-      - name: 'Run Gemini Issue Analysis'
-        id: 'gemini_issue_analysis'
+      - name: 'Run Qwen Code Issue Analysis'
+        id: 'qwen_issue_analysis'
         if: |-
           ${{ steps.find_issues.outputs.issues_to_triage != '[]' }}
-        uses: 'google-github-actions/run-gemini-cli@v0' # ratchet:exclude
+        uses: 'QwenLM/qwen-code-action@v1' # ratchet:exclude
         env:
           GITHUB_TOKEN: '' # Do not pass any auth token here since this runs on untrusted inputs
           ISSUES_TO_TRIAGE: '${{ steps.find_issues.outputs.issues_to_triage }}'
           REPOSITORY: '${{ github.repository }}'
           AVAILABLE_LABELS: '${{ steps.get_labels.outputs.available_labels }}'
         with:
-          gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
-          gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
-          gcp_service_account: '${{ vars.SERVICE_ACCOUNT_EMAIL }}'
-          gcp_workload_identity_provider: '${{ vars.GCP_WIF_PROVIDER }}'
-          gemini_api_key: '${{ secrets.GEMINI_API_KEY }}'
-          gemini_cli_version: '${{ vars.GEMINI_CLI_VERSION }}'
-          gemini_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
-          gemini_model: '${{ vars.GEMINI_MODEL }}'
-          google_api_key: '${{ secrets.GOOGLE_API_KEY }}'
-          use_gemini_code_assist: '${{ vars.GOOGLE_GENAI_USE_GCA }}'
-          use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
+          openai_api_key: '${{ secrets.QWEN_API_KEY }}'
+          openai_base_url: '${{ vars.QWEN_BASE_URL }}'
+          openai_model: '${{ vars.QWEN_MODEL }}'
+          qwen_cli_version: '${{ vars.QWEN_CLI_VERSION }}'
+          qwen_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
           upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
-          workflow_name: 'gemini-scheduled-triage'
+          workflow_name: 'qwen-scheduled-triage'
           settings: |-
             {
               "model": {
@@ -117,7 +111,7 @@ jobs:
               "telemetry": {
                 "enabled": true,
                 "target": "local",
-                "outfile": ".gemini/telemetry.log"
+                "outfile": ".qwen/telemetry.log"
               },
               "tools": {
                 "core": [
@@ -127,7 +121,7 @@ jobs:
                 ]
               }
             }
-          prompt: '/gemini-scheduled-triage'
+          prompt: '/qwen-scheduled-triage'
 
   label:
     runs-on: 'ubuntu-latest'

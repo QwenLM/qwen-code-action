@@ -1,4 +1,4 @@
-description = "Reviews a pull request with Gemini CLI"
+description = "Reviews a pull request with Qwen Code CLI"
 prompt = """
 ## Role
 

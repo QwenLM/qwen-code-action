@@ -17,21 +17,21 @@ for workflow_file in "${WORKFLOWS_DIR}"/*.yml; do
 
   # Add case for each file that should exist in /examples/
   case "${workflow_name}" in
-    "gemini-invoke.yml")
-      example_dir="${EXAMPLES_DIR}/gemini-assistant"
-      example_filename="gemini-invoke.yml"
+    "qwen-invoke.yml")
+      example_dir="${EXAMPLES_DIR}/qwen-assistant"
+      example_filename="qwen-invoke.yml"
       ;; 
-    "gemini-triage.yml")
+    "qwen-triage.yml")
       example_dir="${EXAMPLES_DIR}/issue-triage"
-      example_filename="gemini-triage.yml"
+      example_filename="qwen-triage.yml"
       ;; 
-    "gemini-scheduled-triage.yml")
+    "qwen-scheduled-triage.yml")
       example_dir="${EXAMPLES_DIR}/issue-triage"
-      example_filename="gemini-scheduled-triage.yml"
+      example_filename="qwen-scheduled-triage.yml"
       ;; 
-    "gemini-review.yml")
+    "qwen-review.yml")
       example_dir="${EXAMPLES_DIR}/pr-review"
-      example_filename="gemini-review.yml"
+      example_filename="qwen-review.yml"
       ;; 
     *)
       echo "Skipping ${workflow_name}"
@@ -44,7 +44,7 @@ for workflow_file in "${WORKFLOWS_DIR}"/*.yml; do
 
   # Update lines that are different in the /examples/, such as the version of the action
   sed \
-    -e "s|uses: 'google-github-actions/run-gemini-cli@main'|uses: 'google-github-actions/run-gemini-cli@v0'|g" \
+    -e "s|uses: 'QwenLM/qwen-code-action@main'|uses: 'QwenLM/qwen-code-action@v1'|g" \
     "${workflow_file}" > "${example_file}"
 done
 
@@ -58,19 +58,19 @@ for toml_file in "${COMMANDS_DIR}"/*.toml; do
 
   # Map each TOML file to its example directory
   case "${toml_name}" in
-    "gemini-invoke.toml")
-      example_dir="${EXAMPLES_DIR}/gemini-assistant"
+    "qwen-invoke.toml")
+      example_dir="${EXAMPLES_DIR}/qwen-assistant"
       ;;
-    "gemini-triage.toml")
+    "qwen-triage.toml")
       example_dir="${EXAMPLES_DIR}/issue-triage"
       ;;
-    "gemini-scheduled-triage.toml")
+    "qwen-scheduled-triage.toml")
       example_dir="${EXAMPLES_DIR}/issue-triage"
       ;;
-    "gemini-review.toml")
+    "qwen-review.toml")
       example_dir="${EXAMPLES_DIR}/pr-review"
       ;;
-    "gemini-issue-fixer.toml")
+    "qwen-issue-fixer.toml")
       # Skip this one as it's not part of the standard examples yet
       echo "Skipping ${toml_name} (no example directory)"
       continue
