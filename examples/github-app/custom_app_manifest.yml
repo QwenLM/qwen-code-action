@@ -3,8 +3,8 @@
 # You will paste this into the "Create GitHub App" page on GitHub.
 
 # General App Information
-name: '<NAME>-gemini-cli' # Required: A unique name for your application. Max 39 characters.
-description: 'A custom GitHub App to run Gemini CLI.' # Optional: A brief description of your app's purpose.
+name: '<NAME>-qwen-code' # Required: A unique name for your application. Max 39 characters.
+description: 'A custom GitHub App to run Qwen Code.' # Optional: A brief description of your app's purpose.
 homepage_url: 'https://example.com' # Required: The URL to your app's homepage or landing page.
 
 # Permissions

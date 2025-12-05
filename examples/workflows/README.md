@@ -1,8 +1,8 @@
-# Gemini CLI Workflows
+# Qwen Code Workflows
 
-This directory contains a collection of example workflows that demonstrate how to use the [Google Gemini CLI GitHub Action](https://github.com/google-github-actions/run-gemini-cli). These workflows are designed to be reusable and customizable for your own projects.
+This directory contains a collection of example workflows that demonstrate how to use the [Google Qwen Code GitHub Action](https://github.com/QwenLM/qwen-code-action). These workflows are designed to be reusable and customizable for your own projects.
 
-- [Gemini CLI Workflows](#gemini-cli-workflows)
+- [Qwen Code Workflows](#qwen-code-workflows)
   - [Available Workflows](#available-workflows)
   - [Setup](#setup)
   - [Customizing Workflows](#customizing-workflows)
@@ -11,36 +11,38 @@ This directory contains a collection of example workflows that demonstrate how t
 
 ## Available Workflows
 
-*   **[Gemini Dispatch](./gemini-dispatch)**: A central dispatcher that routes requests to the appropriate workflow based on the triggering event and the command provided in the comment.
-*   **[Issue Triage](./issue-triage)**: Automatically triage GitHub issues using Gemini. This workflow can be configured to run on a schedule or be triggered by issue events.
-*   **[Pull Request Review](./pr-review)**: Automatically review pull requests using Gemini. This workflow can be triggered by pull request events and provides a comprehensive review of the changes.
-*   **[Gemini CLI Assistant](./gemini-assistant)**: A general-purpose, conversational AI assistant that can be invoked within pull requests and issues to perform a wide range of tasks.
+- **[Qwen Dispatch](./qwen-dispatch)**: A central dispatcher that routes requests to the appropriate workflow based on the triggering event and the command provided in the comment.
+- **[Issue Triage](./issue-triage)**: Automatically triage GitHub issues using Qwen. This workflow can be configured to run on a schedule or be triggered by issue events.
+- **[Pull Request Review](./pr-review)**: Automatically review pull requests using Qwen. This workflow can be triggered by pull request events and provides a comprehensive review of the changes.
+- **[Qwen Code Assistant](./qwen-assistant)**: A general-purpose, conversational AI assistant that can be invoked within pull requests and issues to perform a wide range of tasks.
 
 ## Setup
 
 For detailed setup instructions, including prerequisites and authentication, please refer to the main [Authentication documentation](../../docs/authentication.md).
 
 To use a workflow, you can utilize either of the following steps:
-- Run the `/setup-github` command in Gemini CLI on your terminal to set up workflows for your repository.
+
+- Run the `/setup-github` command in Qwen Code on your terminal to set up workflows for your repository.
 - Copy the workflow files into your repository's `.github/workflows` directory.
 
 ## Customizing Workflows
 
-Gemini CLI workflows are highly configurable. You can adjust their behavior by editing the corresponding `.yml` files in your repository.
+Qwen Code workflows are highly configurable. You can adjust their behavior by editing the corresponding `.yml` files in your repository.
 
-For detailed configuration options, including Gemini CLI settings, timeouts, and permissions, see our [Configuration Guide](./CONFIGURATION.md).
+For detailed configuration options, including Qwen Code settings, timeouts, and permissions, see our [Configuration Guide](./CONFIGURATION.md).
 
 ## Awesome Workflows
 
-Discover awesome workflows created by the community! These are publicly available workflows that showcase creative and powerful uses of the Gemini CLI GitHub Action.
+Discover awesome workflows created by the community! These are publicly available workflows that showcase creative and powerful uses of the Qwen Code GitHub Action.
 
 👉 **[View all Awesome Workflows](./AWESOME.md)**
 
 ### Share Your Workflow
 
-Have you created an awesome workflow using Gemini CLI? We'd love to feature it in our [Awesome Workflows](./AWESOME.md) page! 
+Have you created an awesome workflow using Qwen Code? We'd love to feature it in our [Awesome Workflows](./AWESOME.md) page!
 
 **Submission Process:**
+
 1. **Ensure your workflow is public** and well-documented
 2. **Fork this repository** and create a new branch
 3. **Add your workflow** to the appropriate category section in [AWESOME.md](./AWESOME.md) using the [workflow template](./AWESOME.md#workflow-template)
@@ -49,6 +51,7 @@ Have you created an awesome workflow using Gemini CLI? We'd love to feature it i
 5. **Include a brief summary** in your PR description of what your workflow does and why it's awesome
 
 **What makes a workflow "awesome"?**
+
 - Solves a real problem or provides significant value
 - Is well-documented with clear setup instructions
 - Follows best practices for security and performance

@@ -1,8 +1,8 @@
-# PR Review with Gemini CLI
+# PR Review with Qwen Code
 
-This document explains how to use the Gemini CLI on GitHub to automatically review pull requests with AI-powered code analysis.
+This document explains how to use the Qwen Code on GitHub to automatically review pull requests with AI-powered code analysis.
 
-- [PR Review with Gemini CLI](#pr-review-with-gemini-cli)
+- [PR Review with Qwen Code](#pr-review-with-qwen-code)
   - [Overview](#overview)
   - [Features](#features)
   - [Setup](#setup)
@@ -34,7 +34,7 @@ This document explains how to use the Gemini CLI on GitHub to automatically revi
 
 ## Overview
 
-The PR Review workflow uses Google's Gemini AI to provide comprehensive code reviews for pull requests. It analyzes code quality, security, performance, and maintainability while providing constructive feedback in a structured format.
+The PR Review workflow uses Google's Qwen AI to provide comprehensive code reviews for pull requests. It analyzes code quality, security, performance, and maintainability while providing constructive feedback in a structured format.
 
 ## Features
 
@@ -55,8 +55,8 @@ For detailed setup instructions, including prerequisites and authentication, ple
 Add the following entries to your `.gitignore` file to prevent PR review artifacts from being committed:
 
 ```gitignore
-# gemini-cli settings
-.gemini/
+# qwen code settings
+.qwen/
 
 # GitHub App credentials
 gha-creds-*.json
@@ -65,33 +65,34 @@ gha-creds-*.json
 ### Setup Methods
 
 To use this workflow, you can use either of the following methods:
-1. Run the `/setup-github` command in Gemini CLI on your terminal to set up workflows for your repository.
+
+1. Run the `/setup-github` command in Qwen Code on your terminal to set up workflows for your repository.
 2. Copy the workflow files into your repository's `.github/workflows` directory:
 
 ```bash
 mkdir -p .github/workflows
-curl -o .github/workflows/gemini-dispatch.yml https://raw.githubusercontent.com/google-github-actions/run-gemini-cli/main/examples/workflows/gemini-dispatch/gemini-dispatch.yml
-curl -o .github/workflows/gemini-review.yml https://raw.githubusercontent.com/google-github-actions/run-gemini-cli/main/examples/workflows/pr-review/gemini-review.yml
+curl -o .github/workflows/qwen-dispatch.yml https://raw.githubusercontent.com/QwenLM/qwen-code-action/main/examples/workflows/qwen-dispatch/qwen-dispatch.yml
+curl -o .github/workflows/qwen-review.yml https://raw.githubusercontent.com/QwenLM/qwen-code-action/main/examples/workflows/pr-review/qwen-review.yml
 ```
 
-> **Note:** The `gemini-dispatch.yml` workflow is designed to call multiple
-> workflows. If you are only setting up `gemini-review.yml`, you should comment out or
-> remove the other jobs in your copy of `gemini-dispatch.yml`.
+> **Note:** The `qwen-dispatch.yml` workflow is designed to call multiple
+> workflows. If you are only setting up `qwen-review.yml`, you should comment out or
+> remove the other jobs in your copy of `qwen-dispatch.yml`.
 
 ## Dependencies
 
-This workflow relies on the [gemini-dispatch.yml](../gemini-dispatch/gemini-dispatch.yml) workflow to route requests to the appropriate workflow.
+This workflow relies on the [qwen-dispatch.yml](../qwen-dispatch/qwen-dispatch.yml) workflow to route requests to the appropriate workflow.
 
 ## Usage
 
 ### Supported Triggers
 
-The Gemini PR Review workflow is triggered by:
+The Qwen PR Review workflow is triggered by:
 
 - **New PRs**: When a pull request is opened or reopened
-- **PR Review Comments**: When a review comment contains `@gemini-cli /review`
-- **PR Reviews**: When a review body contains `@gemini-cli /review`
-- **Issue Comments**: When a comment on a PR contains `@gemini-cli /review`
+- **PR Review Comments**: When a review comment contains `@qwen-code /review`
+- **PR Reviews**: When a review body contains `@qwen-code /review`
+- **Issue Comments**: When a comment on a PR contains `@qwen-code /review`
 - **Manual Dispatch**: Via the GitHub Actions UI ("Run workflow")
 
 ## Interaction Flow
@@ -102,17 +103,17 @@ The workflow follows a clear, multi-step process to handle review requests:
 flowchart TD
     subgraph Triggers
         A[PR Opened]
-        B[PR Review Comment with '@gemini-cli /review']
-        C[PR Review with '@gemini-cli /review']
-        D[Issue Comment with '@gemini-cli /review']
+        B[PR Review Comment with '@qwen-code /review']
+        C[PR Review with '@qwen-code /review']
+        D[Issue Comment with '@qwen-code /review']
         E[Manual Dispatch via Actions UI]
     end
 
-    subgraph "Gemini CLI Workflow"
+    subgraph "Qwen Code Workflow"
         F[Generate GitHub App Token]
         G[Checkout PR Code]
         H[Get PR Details & Changed Files]
-        I[Run Gemini PR Review Analysis]
+        I[Run Qwen PR Review Analysis]
         J[Post Review to PR]
     end
 
@@ -130,6 +131,7 @@ flowchart TD
 ### Automatic Reviews
 
 The workflow automatically triggers on:
+
 - **New PRs**: When a pull request is opened
 
 ### Manual Reviews
@@ -137,7 +139,7 @@ The workflow automatically triggers on:
 Trigger a review manually by commenting on a PR:
 
 ```
-@gemini-cli /review
+@qwen-code /review
 ```
 
 ### Custom Review Instructions
@@ -145,17 +147,18 @@ Trigger a review manually by commenting on a PR:
 You can provide specific focus areas by adding instructions after the trigger:
 
 ```
-@gemini-cli /review focus on security
-@gemini-cli /review check performance and memory usage  
-@gemini-cli /review please review error handling
-@gemini-cli /review look for breaking changes
+@qwen-code /review focus on security
+@qwen-code /review check performance and memory usage  
+@qwen-code /review please review error handling
+@qwen-code /review look for breaking changes
 ```
 
 ### Manual Workflow Dispatch
 
 You can also trigger reviews through the GitHub Actions UI:
+
 1. Go to Actions tab in your repository
-2. Select "Gemini PR Review" workflow
+2. Select "Qwen PR Review" workflow
 3. Click "Run workflow"
 4. Enter the PR number to review
 
@@ -167,32 +170,32 @@ The AI review follows a structured format, providing both a high-level summary a
 
 After posting all inline comments, the action submits the review with a final summary comment that includes:
 
--   **Review Summary**: A brief 2-3 sentence overview of the pull request and the overall assessment.
--   **General Feedback**: High-level observations about code quality, architectural patterns, positive implementation aspects, or recurring themes that were not addressed in inline comments.
-
+- **Review Summary**: A brief 2-3 sentence overview of the pull request and the overall assessment.
+- **General Feedback**: High-level observations about code quality, architectural patterns, positive implementation aspects, or recurring themes that were not addressed in inline comments.
 
 ### Specific Feedback (Inline Comments)
 
 The action provides specific, actionable feedback directly on the relevant lines of code in the pull request. Each comment includes:
 
--   **Priority**: An emoji indicating the severity of the feedback.
-    -   🔴 **Critical**: Must be fixed before merging (e.g., security vulnerabilities, breaking changes).
-    -   🟠 **High**: Should be addressed (e.g., performance issues, design flaws).
-    -   🟡 **Medium**: Recommended improvements (e.g., code quality, style).
-    -   🟢 **Low**: Nice-to-have suggestions (e.g., documentation, minor refactoring).
-    -   🔵 **Unclear**: Priority is not determined.
--   **Suggestion**: A code block with a suggested change, where applicable.
+- **Priority**: An emoji indicating the severity of the feedback.
+  - 🔴 **Critical**: Must be fixed before merging (e.g., security vulnerabilities, breaking changes).
+  - 🟠 **High**: Should be addressed (e.g., performance issues, design flaws).
+  - 🟡 **Medium**: Recommended improvements (e.g., code quality, style).
+  - 🟢 **Low**: Nice-to-have suggestions (e.g., documentation, minor refactoring).
+  - 🔵 **Unclear**: Priority is not determined.
+- **Suggestion**: A code block with a suggested change, where applicable.
 
 **Example Inline Comment:**
 
 > 🟢 Use camelCase for function names
+>
 > ```suggestion
 > myFunction
 > ```
 
 ## Review Areas
 
-Gemini CLI analyzes multiple dimensions of code quality:
+Qwen Code analyzes multiple dimensions of code quality:
 
 - **Security**: Authentication, authorization, input validation, data sanitization
 - **Performance**: Algorithms, database queries, caching, resource usage
@@ -213,25 +216,27 @@ You can customize the workflow by modifying:
 
 ### Review Prompt Customization
 
-The review prompt is defined in the `gemini-review.toml` file. The action automatically copies this file from `.github/commands/` to `.gemini/commands/` during execution.
+The review prompt is defined in the `qwen-review.toml` file. The action automatically copies this file from `.github/commands/` to `.qwen/commands/` during execution.
 
 **To customize the review prompt:**
 
 1. Copy the TOML file to your repository:
+
    ```bash
-   mkdir -p .gemini/commands
-   curl -o .gemini/commands/gemini-review.toml https://raw.githubusercontent.com/google-github-actions/run-gemini-cli/main/examples/workflows/pr-review/gemini-review.toml
+   mkdir -p .qwen/commands
+   curl -o .qwen/commands/qwen-review.toml https://raw.githubusercontent.com/QwenLM/qwen-code-action/main/examples/workflows/pr-review/qwen-review.toml
    ```
 
-2. Edit `.gemini/commands/gemini-review.toml` to customize:
+2. Edit `.qwen/commands/qwen-review.toml` to customize:
    - Focus on specific technologies or frameworks
    - Emphasize particular coding standards
    - Include project-specific guidelines
    - Adjust review depth and focus areas
 
 3. Commit the file to your repository:
+
    ```bash
-   git add .gemini/commands/gemini-review.toml
+   git add .qwen/commands/qwen-review.toml
    git commit -m "feat: customize PR review prompt"
    ```
 
@@ -242,23 +247,27 @@ For more details on workflow configuration, see the [Configuration Guide](../CON
 ## Examples
 
 ### Basic Review Request
+
 ```
-@gemini-cli /review
+@qwen-code /review
 ```
 
 ### Security-Focused Review
+
 ```
-@gemini-cli /review focus on security vulnerabilities and authentication
+@qwen-code /review focus on security vulnerabilities and authentication
 ```
 
 ### Performance Review
+
 ```
-@gemini-cli /review check for performance issues and optimization opportunities
+@qwen-code /review check for performance issues and optimization opportunities
 ```
 
 ### Breaking Changes Check
+
 ```
-@gemini-cli /review look for potential breaking changes and API compatibility
+@qwen-code /review look for potential breaking changes and API compatibility
 ```
 
 ## Extending to Support Forks
@@ -271,7 +280,7 @@ from forks could enable bad actors to access secrets.
 
 This behavior may not be ideal for all use cases - such as private repositories.
 To enable the `pr-review` workflow to run on branches in forks, there are several
-approaches depending on your authentication setup and security requirements. 
+approaches depending on your authentication setup and security requirements.
 Please refer to the GitHub documentation links provided below for
 the security and access considerations of doing so.
 
@@ -288,7 +297,9 @@ can enable fork support by simply removing the fork restriction condition in the
 dispatch workflow.
 
 **Implementation**:
-1. Remove the fork restriction in `gemini-dispatch.yml`:
+
+1. Remove the fork restriction in `qwen-dispatch.yml`:
+
    ```yaml
    # Change this condition to remove the fork check
    if: |-
@@ -303,7 +314,6 @@ dispatch workflow.
 2. Document for contributors that they need to configure Google authentication
    in their fork as described in the
    [Authentication documentation](../../../docs/authentication.md).
-
 
 #### 2. Using `pull_request_target` Event
 

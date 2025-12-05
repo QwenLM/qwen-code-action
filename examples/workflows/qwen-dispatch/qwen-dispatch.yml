@@ -45,7 +45,7 @@ jobs:
   dispatch:
     # For PRs: only if not from a fork
     # For issues: only on open/reopen
-    # For comments: only if user types @gemini-cli and is OWNER/MEMBER/COLLABORATOR
+    # For comments: only if user types @qwen-code and is OWNER/MEMBER/COLLABORATOR
     if: |-
       (
         github.event_name == 'pull_request' &&

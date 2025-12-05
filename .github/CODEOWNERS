@@ -1,3 +1,3 @@
-* @google-github-actions/maintainers @google-github-actions/run-gemini-cli-maintainers
+* @QwenLM/maintainers @QwenLM/qwen-code-action-maintainers
 
-.github/CODEOWNERS @google-github-actions/maintainers
+.github/CODEOWNERS @QwenLM/maintainers

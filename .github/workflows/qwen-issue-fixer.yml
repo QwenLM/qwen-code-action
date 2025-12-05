@@ -22,7 +22,7 @@ jobs:
       pull-requests: 'write' # Enable creating pull requests
 
     steps:
-      # Mint a token so that the comments show up as gemini-cli instead of github-actions.
+      # Mint a token so that the comments show up as qwen code instead of github-actions.
       - name: 'Mint identity token'
         id: 'mint_identity_token'
         if: |-

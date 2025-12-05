@@ -1,6 +1,6 @@
 # Best Practices
 
-This guide provides best practices for using the Gemini CLI GitHub Action, with a focus on repository security and operational excellence.
+This guide provides best practices for using the Qwen Code GitHub Action, with a focus on repository security and operational excellence.
 
 - [Best Practices](#best-practices)
   - [Repository Security](#repository-security)
@@ -23,10 +23,10 @@ Protecting your branches and tags is critical to preventing unauthorized changes
 
 We recommend the following at a minimum for your `main` branch:
 
-*   **Require a pull request before merging**
-*   **Require a minimum number of approvals**
-*   **Dismiss stale approvals**
-*   **Require status checks to pass before merging**
+- **Require a pull request before merging**
+- **Require a minimum number of approvals**
+- **Dismiss stale approvals**
+- **Require status checks to pass before merging**
 
 For more information, see the GitHub documentation on [managing branch protections].
 
@@ -34,8 +34,8 @@ For more information, see the GitHub documentation on [managing branch protectio
 
 To prevent fraudulent or accidental approvals, you can restrict who can approve pull requests.
 
-*   **CODEOWNERS**: Use a [`CODEOWNERS` file] to define individuals or teams that are responsible for code in your repository.
-*   **Code review limits**: [Limit code review approvals] to specific users or teams.
+- **CODEOWNERS**: Use a [`CODEOWNERS` file] to define individuals or teams that are responsible for code in your repository.
+- **Code review limits**: [Limit code review approvals] to specific users or teams.
 
 ## Workflow Configuration
 
@@ -51,21 +51,21 @@ Never hardcode secrets (e.g., API keys, tokens) in your workflows. Use [GitHub S
 
 ### Pin Action Versions
 
-To ensure the stability and security of your workflows, pin the Gemini CLI action to a specific version.
+To ensure the stability and security of your workflows, pin the Qwen Code action to a specific version.
 
 ```yaml
-uses: google-github-actions/run-gemini-cli@v0
+uses: QwenLM/qwen-code-action@v0
 ```
 
 ## Creating Custom Workflows
 
-When creating your own workflows, we recommend starting with the [examples provided in this repository](../examples/workflows/). These examples demonstrate how to use the `run-gemini-cli` action for various use cases, such as pull request reviews, issue triage, and more.
+When creating your own workflows, we recommend starting with the [examples provided in this repository](../examples/workflows/). These examples demonstrate how to use the `qwen-code-action` for various use cases, such as pull request reviews, issue triage, and more.
 
 Ensure the new workflows you create follow the principle of least privilege. Only grant the permissions necessary to perform the required tasks.
 
 ## Monitoring and Auditing
 
-To gain deeper insights into the performance and behavior of Gemini CLI, you can enable OpenTelemetry to send traces, metrics, and logs to your Google Cloud project. This is highly recommended for production environments to monitor for unexpected behavior and performance issues.
+To gain deeper insights into the performance and behavior of Qwen Code, you can enable OpenTelemetry to send traces, metrics, and logs to your Google Cloud project. This is highly recommended for production environments to monitor for unexpected behavior and performance issues.
 
 For detailed instructions on how to set up and configure observability, please refer to our [**Observability documentation**](./observability.md).
 

@@ -1,4 +1,4 @@
-description = "Triages issues on a schedule with Gemini CLI"
+description = "Triages issues on a schedule with Qwen Code"
 prompt = """
 ## Role
 
@@ -57,7 +57,6 @@ Parse the provided data above:
 Before reviewing the issues, create an internal map of the semantic purpose of each available label based on its name. For each label, define both its positive meaning and, if applicable, its exclusionary criteria.
 
 **Example Semantic Map:**
-*   `kind/bug`: An error, flaw, or unexpected behavior in existing code. *Excludes feature requests.*
 *   `kind/enhancement`: A request for a new feature or improvement to existing functionality. *Excludes bug reports.*
 *   `priority/p1`: A critical issue requiring immediate attention, such as a security vulnerability, data loss, or a production outage.
 *   `good first issue`: A task suitable for a newcomer, with a clear and limited scope.
@@ -103,7 +102,7 @@ The output **MUST** be a JSON array of objects. Each object represents a triaged
 [
     {
         "issue_number": 123,
-        "labels_to_set": ["kind/bug", "priority/p1"],
+        "labels_to_set": ["priority/p1"],
         "explanation": "The issue describes a 'critical error' and 'crash' in the login functionality, indicating a high-priority bug."
     },
     {
