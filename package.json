@@ -1,0 +1,34 @@
+{
+  "name": "qwen-code-action",
+  "version": "0.1.0",
+  "description": "GitHub Action for Qwen Code CLI integration",
+  "scripts": {
+    "build": "echo \"No build required for composite action\"",
+    "docs": "./node_modules/.bin/actions-gen-readme",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">= 20.x",
+    "npm": ">= 10.x"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/QwenLM/qwen-code-action.git"
+  },
+  "keywords": [
+    "qwen",
+    "qwen-code",
+    "qwen-code-cli",
+    "ai",
+    "code-review"
+  ],
+  "author": "Alibaba Cloud",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/QwenLM/qwen-code-action/issues"
+  },
+  "homepage": "https://github.com/QwenLM/qwen-code-action#readme",
+  "devDependencies": {
+    "@google-github-actions/actions-utils": "^0.8.10"
+  }
+}
