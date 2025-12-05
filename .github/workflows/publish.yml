@@ -1,0 +1,25 @@
+name: 'Publish immutable action version'
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - 'published'
+
+jobs:
+  publish:
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      packages: 'write'
+
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
+
+      - name: 'Publish'
+        id: 'publish'
+        uses: 'actions/publish-immutable-action@4bc8754ffc40f27910afb20287dbbbb675a4e978' # ratchet:actions/publish-immutable-action@v0.0.4
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
