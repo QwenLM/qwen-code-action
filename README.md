@@ -14,7 +14,7 @@ Use it to perform GitHub pull request reviews, triage issues, perform code analy
     - [2. Add it as a GitHub Secret](#2-add-it-as-a-github-secret)
     - [3. Update your .gitignore](#3-update-your-gitignore)
     - [4. Choose a Workflow](#4-choose-a-workflow)
-    - [5. Try it out!](#5-try-it-out)
+    - [5. Try it out](#5-try-it-out)
   - [Workflows](#workflows)
     - [Qwen Code Dispatch](#qwen-code-dispatch)
     - [Issue Triage](#issue-triage)
@@ -26,7 +26,6 @@ Use it to perform GitHub pull request reviews, triage issues, perform code analy
     - [Repository Variables](#repository-variables)
     - [Secrets](#secrets)
   - [Authentication](#authentication)
-    - [Google Authentication](#google-authentication)
     - [GitHub Authentication](#github-authentication)
   - [Observability](#observability)
   - [Extensions](#extensions)
@@ -250,14 +249,7 @@ For more information, refer to the
 
 ## Authentication
 
-This action requires authentication to both Google services (for Qwen Code AI) and the GitHub API.
-
-### Google Authentication
-
-Choose the authentication method that best fits your use case:
-
-1. **Qwen Code API Key:** The simplest method for projects that don't require Google Cloud integration
-2. **Workload Identity Federation:** The most secure method for authenticating to Google Cloud services
+This action requires authentication to the GitHub API and optionally to Qwen Code services.
 
 ### GitHub Authentication
 
@@ -268,7 +260,7 @@ You can authenticate with GitHub in two ways:
 2. **Custom GitHub App (Recommended):** For the most secure and flexible
     authentication, we recommend creating a custom GitHub App.
 
-For detailed setup instructions for both Google and GitHub authentication, go to the
+For detailed setup instructions for both Qwen and GitHub authentication, go to the
 [**Authentication documentation**](./docs/authentication.md).
 
 ## Observability
@@ -315,7 +307,7 @@ Contributions are welcome! Check out the Qwen Code CLI
 started.
 
 [secrets]: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
-[Qwen Code]: https://qwenlm.github.io/
+[Qwen Code]: https://github.com/QwenLM/qwen-code
 [DashScope]: https://dashscope.console.aliyun.com/apiKey
 [Qwen Code CLI]: https://github.com/QwenLM/qwen-code-action/
 [variables]: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables#creating-configuration-variables-for-a-repository
