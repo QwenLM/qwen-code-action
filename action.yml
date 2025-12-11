@@ -204,7 +204,7 @@ runs:
         fi
 
         # We capture stdout (JSON) to TEMP_STDOUT and stderr to TEMP_STDERR
-        if ! qwen --yolo --prompt "${PROMPT}" --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}"; then
+        if ! qwen --yolo --prompt "${PROMPT}" --channel=CI --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}"; then
           FAILED=true
         fi
 
