@@ -1,6 +1,6 @@
 # Qwen Code Workflows
 
-This directory contains a collection of example workflows that demonstrate how to use the [Google Qwen Code GitHub Action](https://github.com/QwenLM/qwen-code-action). These workflows are designed to be reusable and customizable for your own projects.
+This directory contains a collection of example workflows that demonstrate how to use the [Qwen Code GitHub Action](https://github.com/QwenLM/qwen-code-action). These workflows are designed to be reusable and customizable for your own projects.
 
 - [Qwen Code Workflows](#qwen-code-workflows)
   - [Available Workflows](#available-workflows)

@@ -27,7 +27,6 @@ Use it to perform GitHub pull request reviews, triage issues, perform code analy
     - [Secrets](#secrets)
   - [Authentication](#authentication)
     - [GitHub Authentication](#github-authentication)
-  - [Observability](#observability)
   - [Extensions](#extensions)
   - [Best Practices](#best-practices)
   - [Customization](#customization)
@@ -151,18 +150,6 @@ go to the [Qwen Code Assistant workflow documentation](./examples/workflows/qwen
 
 <!-- BEGIN_AUTOGEN_INPUTS -->
 
-- <a name="__input_gcp_location"></a><a href="#user-content-__input_gcp_location"><code>gcp_location</code></a>: _(Optional)_ The Google Cloud location.
-
-- <a name="__input_gcp_project_id"></a><a href="#user-content-__input_gcp_project_id"><code>gcp_project_id</code></a>: _(Optional)_ The Google Cloud project ID.
-
-- <a name="__input_gcp_service_account"></a><a href="#user-content-__input_gcp_service_account"><code>gcp_service_account</code></a>: _(Optional)_ The Google Cloud service account email.
-
-- <a name="__input_gcp_workload_identity_provider"></a><a href="#user-content-__input_gcp_workload_identity_provider"><code>gcp_workload_identity_provider</code></a>: _(Optional)_ The Google Cloud Workload Identity Provider.
-
-- <a name="__input_gcp_token_format"></a><a href="#user-content-__input_gcp_token_format"><code>gcp_token_format</code></a>: _(Optional, default: `access_token`)_ The token format for authentication. Set to "access_token" to generate access tokens (requires service account), or set to empty string for direct WIF. Can be "access_token" or "id_token".
-
-- <a name="__input_gcp_access_token_scopes"></a><a href="#user-content-__input_gcp_access_token_scopes"><code>gcp_access_token_scopes</code></a>: _(Optional, default: `https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/userinfo.profile`)_ The access token scopes when using token_format "access_token". Comma-separated list of OAuth 2.0 scopes.
-
 - <a name="__input_qwen_api_key"></a><a href="#user-content-__input_qwen_api_key"><code>qwen_api_key</code></a>: _(Optional)_ The API key for the Qwen API.
 
 - <a name="__input_qwen_cli_version"></a><a href="#user-content-__input_qwen_cli_version"><code>qwen_cli_version</code></a>: _(Optional, default: `latest`)_ The version of the Qwen Code CLI to install. Can be "latest", "preview", "nightly", a specific version number, or a git branch, tag, or commit. For more information, see [Qwen Code CLI releases](https://github.com/QwenLM/qwen-code-action/blob/main/docs/releases.md).
@@ -170,8 +157,6 @@ go to the [Qwen Code Assistant workflow documentation](./examples/workflows/qwen
 - <a name="__input_qwen_debug"></a><a href="#user-content-__input_qwen_debug"><code>qwen_debug</code></a>: _(Optional)_ Enable debug logging and output streaming.
 
 - <a name="__input_qwen_model"></a><a href="#user-content-__input_qwen_model"><code>qwen_model</code></a>: _(Optional)_ The model to use with Qwen Code.
-
-- <a name="__input_google_api_key"></a><a href="#user-content-__input_google_api_key"><code>google_api_key</code></a>: _(Optional)_ The Vertex AI API key to use with Gemini.
 
 - <a name="__input_prompt"></a><a href="#user-content-__input_prompt"><code>prompt</code></a>: _(Optional, default: `You are a helpful assistant.`)_ A string passed to the Qwen Code CLI's [`--prompt` argument](https://github.com/QwenLM/qwen-code-action/blob/main/docs/cli/configuration.md#command-line-arguments).
 
@@ -212,12 +197,6 @@ We recommend setting the following values as repository variables so they can be
 | --------------------------- | ------------------------------------------------------ | -------- | -------- | ------------------------- |
 | `DEBUG`                     | Enables debug logging for the Qwen Code CLI.              | Variable | No       | Never                     |
 | `QWEN_CLI_VERSION`        | Controls which version of the Qwen Code CLI is installed. | Variable | No       | Pinning the CLI version   |
-| `GCP_WIF_PROVIDER`          | Full resource name of the Workload Identity Provider.  | Variable | No       | Using Google Cloud        |
-| `GOOGLE_CLOUD_PROJECT`      | Google Cloud project for inference and observability.  | Variable | No       | Using Google Cloud        |
-| `SERVICE_ACCOUNT_EMAIL`     | Google Cloud service account email address. Optional - only needed for WIF with service account (not required for direct WIF). | Variable | No       | Using WIF with service account |
-| `GOOGLE_CLOUD_LOCATION`     | Region of the Google Cloud project.                    | Variable | No       | Using Google Cloud        |
-| `GOOGLE_GENAI_USE_VERTEXAI` | Set to `true` to use Vertex AI                         | Variable | No       | Using Vertex AI           |
-| `GOOGLE_GENAI_USE_GCA`      | Set to `true` to use Gemini Code Assist                | Variable | No       | Using Gemini Code Assist  |
 | `APP_ID`                    | GitHub App ID for custom authentication.               | Variable | No       | Using a custom GitHub App |
 
 To add a repository variable:
@@ -234,9 +213,8 @@ You can set the following secrets in your repository:
 
 | Name              | Description                                   | Required | When Required                         |
 | ----------------- | --------------------------------------------- | -------- | ------------------------------------- |
-| `QWEN_API_KEY`  | Your Qwen API key from DashScope.    | No       | You don't have a GCP project.         |
+| `QWEN_API_KEY`  | Your Qwen API key from DashScope.    | Yes      | Required for all workflows that call Qwen. |
 | `APP_PRIVATE_KEY` | Private key for your GitHub App (PEM format). | No       | Using a custom GitHub App.            |
-| `GOOGLE_API_KEY`  | Your Google API Key to use with Vertex AI.    | No       | You have a express Vertex AI account. |
 
 To add a secret:
 
@@ -263,16 +241,6 @@ You can authenticate with GitHub in two ways:
 For detailed setup instructions for both Qwen and GitHub authentication, go to the
 [**Authentication documentation**](./docs/authentication.md).
 
-## Observability
-
-This action can be configured to send telemetry data (traces, metrics, and logs)
-to your own Google Cloud project. This allows you to monitor the performance and
-behavior of the [Qwen Code CLI] within your workflows, providing valuable insights
-for debugging and optimization.
-
-For detailed instructions on how to set up and configure observability, go to
-the [Observability documentation](./docs/observability.md).
-
 ## Extensions
 
 The Qwen Code CLI can be extended with additional functionality through extensions.
@@ -288,7 +256,6 @@ To ensure the security, reliability, and efficiency of your automated workflows,
 Key recommendations include:
 
 - **Securing Your Repository:** Implementing branch and tag protection, and restricting pull request approvers.
-- **Workflow Configuration:** Using Workload Identity Federation for secure authentication to Google Cloud, managing secrets effectively, and pinning action versions to prevent unexpected changes.
 - **Monitoring and Auditing:** Regularly reviewing action logs and enabling OpenTelemetry for deeper insights into performance and behavior.
 
 For a comprehensive guide on securing your repository and workflows, please refer to our [**Best Practices documentation**](./docs/best-practices.md).

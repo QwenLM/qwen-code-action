@@ -29,12 +29,11 @@ This document explains how to use the Qwen Code on GitHub to automatically revie
     - [Performance Review](#performance-review)
     - [Breaking Changes Check](#breaking-changes-check)
   - [Extending to Support Forks](#extending-to-support-forks)
-      - [1. Simple Fork Support](#1-simple-fork-support)
-      - [2. Using `pull_request_target` Event](#2-using-pull_request_target-event)
+      - [Using `pull_request_target` Event](#using-pull_request_target-event)
 
 ## Overview
 
-The PR Review workflow uses Google's Qwen AI to provide comprehensive code reviews for pull requests. It analyzes code quality, security, performance, and maintainability while providing constructive feedback in a structured format.
+The PR Review workflow uses Qwen AI to provide comprehensive code reviews for pull requests. It analyzes code quality, security, performance, and maintainability while providing constructive feedback in a structured format.
 
 ## Features
 
@@ -284,38 +283,10 @@ approaches depending on your authentication setup and security requirements.
 Please refer to the GitHub documentation links provided below for
 the security and access considerations of doing so.
 
-Depending on your security requirements and use case, you can choose from these
-approaches:
+Depending on your security requirements and use case, you can use the following
+approach:
 
-#### 1. Simple Fork Support
-
-This could work for repositories where contributors can provide their own Google
-authentication in their forks.
-
-**How it works**: If forks have their own Google authentication configured, you
-can enable fork support by simply removing the fork restriction condition in the
-dispatch workflow.
-
-**Implementation**:
-
-1. Remove the fork restriction in `qwen-dispatch.yml`:
-
-   ```yaml
-   # Change this condition to remove the fork check
-   if: |-
-     (
-       github.event_name == 'pull_request'
-       # Remove this line: && github.event.pull_request.head.repo.fork == false
-     ) || (
-       # ... rest of conditions
-     )
-   ```
-
-2. Document for contributors that they need to configure Google authentication
-   in their fork as described in the
-   [Authentication documentation](../../../docs/authentication.md).
-
-#### 2. Using `pull_request_target` Event
+#### Using `pull_request_target` Event
 
 This could work for private repositories where you want to provide API access
 centrally.

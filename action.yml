@@ -127,17 +127,6 @@ runs:
       env:
         GITHUB_ACTION_PATH: '${{ github.action_path }}'
 
-    - name: 'Authenticate to Google Cloud'
-      if: 'false'
-      id: 'auth'
-      uses: 'google-github-actions/auth@v2' # ratchet:exclude
-      with:
-        project_id: ''
-        workload_identity_provider: ''
-        service_account: ''
-        token_format: ''
-        access_token_scopes: ''
-
     - name: 'Install pnpm'
       if: |-
         ${{ inputs.use_pnpm == 'true' }}
@@ -301,12 +290,6 @@ runs:
       with:
         name: 'qwen-output'
         path: 'qwen-artifacts/'
-
-    - name: 'Upload Telemetry to Google Cloud'
-      if: 'false'
-      shell: 'bash'
-      run: |-
-        echo "Telemetry upload is disabled for Qwen Code CLI"
 
 branding:
   icon: 'terminal'
