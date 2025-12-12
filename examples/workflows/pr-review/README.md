@@ -29,7 +29,7 @@ This document explains how to use the Qwen Code on GitHub to automatically revie
     - [Performance Review](#performance-review)
     - [Breaking Changes Check](#breaking-changes-check)
   - [Extending to Support Forks](#extending-to-support-forks)
-      - [Using `pull_request_target` Event](#using-pull_request_target-event)
+    - [Using `pull_request_target` Event](#using-pull_request_target-event)
 
 ## Overview
 
@@ -89,9 +89,9 @@ This workflow relies on the [qwen-dispatch.yml](../qwen-dispatch/qwen-dispatch.y
 The Qwen PR Review workflow is triggered by:
 
 - **New PRs**: When a pull request is opened or reopened
-- **PR Review Comments**: When a review comment contains `@qwen-code /review`
-- **PR Reviews**: When a review body contains `@qwen-code /review`
-- **Issue Comments**: When a comment on a PR contains `@qwen-code /review`
+- **PR Review Comments**: When a review comment contains `@qwencoder /review`
+- **PR Reviews**: When a review body contains `@qwencoder /review`
+- **Issue Comments**: When a comment on a PR contains `@qwencoder /review`
 - **Manual Dispatch**: Via the GitHub Actions UI ("Run workflow")
 
 ## Interaction Flow
@@ -102,9 +102,9 @@ The workflow follows a clear, multi-step process to handle review requests:
 flowchart TD
     subgraph Triggers
         A[PR Opened]
-        B[PR Review Comment with '@qwen-code /review']
-        C[PR Review with '@qwen-code /review']
-        D[Issue Comment with '@qwen-code /review']
+        B[PR Review Comment with '@qwencoder /review']
+        C[PR Review with '@qwencoder /review']
+        D[Issue Comment with '@qwencoder /review']
         E[Manual Dispatch via Actions UI]
     end
 
@@ -138,7 +138,7 @@ The workflow automatically triggers on:
 Trigger a review manually by commenting on a PR:
 
 ```
-@qwen-code /review
+@qwencoder /review
 ```
 
 ### Custom Review Instructions
@@ -146,10 +146,10 @@ Trigger a review manually by commenting on a PR:
 You can provide specific focus areas by adding instructions after the trigger:
 
 ```
-@qwen-code /review focus on security
-@qwen-code /review check performance and memory usage  
-@qwen-code /review please review error handling
-@qwen-code /review look for breaking changes
+@qwencoder /review focus on security
+@qwencoder /review check performance and memory usage  
+@qwencoder /review please review error handling
+@qwencoder /review look for breaking changes
 ```
 
 ### Manual Workflow Dispatch
@@ -248,25 +248,25 @@ For more details on workflow configuration, see the [Configuration Guide](../CON
 ### Basic Review Request
 
 ```
-@qwen-code /review
+@qwencoder /review
 ```
 
 ### Security-Focused Review
 
 ```
-@qwen-code /review focus on security vulnerabilities and authentication
+@qwencoder /review focus on security vulnerabilities and authentication
 ```
 
 ### Performance Review
 
 ```
-@qwen-code /review check for performance issues and optimization opportunities
+@qwencoder /review check for performance issues and optimization opportunities
 ```
 
 ### Breaking Changes Check
 
 ```
-@qwen-code /review look for potential breaking changes and API compatibility
+@qwencoder /review look for potential breaking changes and API compatibility
 ```
 
 ## Extending to Support Forks

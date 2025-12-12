@@ -4,7 +4,7 @@
 
 `qwen-code-action` is a GitHub Action that integrates [Qwen Code] into your development workflow via the [Qwen Code CLI]. It acts both as an autonomous agent for critical routine coding tasks, and an on-demand collaborator you can quickly delegate work to.
 
-Use it to perform GitHub pull request reviews, triage issues, perform code analysis and modification, and more using [Qwen Code] conversationally (e.g., `@qwen-code fix this issue`) directly inside your GitHub repositories.
+Use it to perform GitHub pull request reviews, triage issues, perform code analysis and modification, and more using [Qwen Code] conversationally (e.g., `@qwencoder fix this issue`) directly inside your GitHub repositories.
 
 - [qwen-code-action](#qwen-code-action)
   - [Overview](#overview)
@@ -36,7 +36,7 @@ Use it to perform GitHub pull request reviews, triage issues, perform code analy
 
 - **Automation**: Trigger workflows based on events (e.g. issue opening) or schedules (e.g. nightly).
 - **On-demand Collaboration**: Trigger workflows in issue and pull request
-  comments by mentioning the [Qwen Code CLI] (e.g., `@qwen-code /review`).
+  comments by mentioning the [Qwen Code CLI] (e.g., `@qwencoder /review`).
 - **Extensible with Tools**: Leverage [Qwen Code] models' tool-calling capabilities to
   interact with other CLIs like the [GitHub CLI] (`gh`).
 - **Customizable**: Use a `QWEN.md` file in your repository to provide
@@ -97,21 +97,21 @@ You have two options to set up a workflow:
 **Pull Request Review:**
 
 - Open a pull request in your repository and wait for automatic review
-- Comment `@qwen-code /review` on an existing pull request to manually trigger a review
+- Comment `@qwencoder /review` on an existing pull request to manually trigger a review
 
 **Issue Triage:**
 
 - Open an issue and wait for automatic triage
-- Comment `@qwen-code /triage` on existing issues to manually trigger triaging
+- Comment `@qwencoder /triage` on existing issues to manually trigger triaging
 
 **General AI Assistance:**
 
-- In any issue or pull request, mention `@qwen-code` followed by your request
+- In any issue or pull request, mention `@qwencoder` followed by your request
 - Examples:
-  - `@qwen-code explain this code change`
-  - `@qwen-code suggest improvements for this function`
-  - `@qwen-code help me debug this error`
-  - `@qwen-code write unit tests for this component`
+  - `@qwencoder explain this code change`
+  - `@qwencoder suggest improvements for this function`
+  - `@qwencoder help me debug this error`
+  - `@qwencoder write unit tests for this component`
 
 ## Workflows
 

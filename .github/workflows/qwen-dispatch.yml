@@ -45,7 +45,7 @@ jobs:
   dispatch:
     # For PRs: only if not from a fork
     # For issues: only on open/reopen
-    # For comments: only if user types @qwen-code and is OWNER/MEMBER/COLLABORATOR
+    # For comments: only if user types @qwencoder and is OWNER/MEMBER/COLLABORATOR
     if: |-
       (
         github.event_name == 'pull_request' &&
@@ -55,7 +55,7 @@ jobs:
         contains(fromJSON('["opened", "reopened"]'), github.event.action)
       ) || (
         github.event.sender.type == 'User' &&
-        startsWith(github.event.comment.body || github.event.review.body || github.event.issue.body, '@qwen-code') &&
+        startsWith(github.event.comment.body || github.event.review.body || github.event.issue.body, '@qwencoder') &&
         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association || github.event.review.author_association || github.event.issue.author_association)
       )
     runs-on: 'ubuntu-latest'
@@ -97,14 +97,14 @@ jobs:
               core.setOutput('command', 'review');
             } else if (['issues.opened', 'issues.reopened'].includes(eventType)) {
               core.setOutput('command', 'triage');
-            } else if (request.startsWith("@qwen-code /review")) {
+            } else if (request.startsWith("@qwencoder /review")) {
               core.setOutput('command', 'review');
-              const additionalContext = request.replace(/^@qwen-code \/review/, '').trim();
+              const additionalContext = request.replace(/^@qwencoder \/review/, '').trim();
               core.setOutput('additional_context', additionalContext);
-            } else if (request.startsWith("@qwen-code /triage")) {
+            } else if (request.startsWith("@qwencoder /triage")) {
               core.setOutput('command', 'triage');
-            } else if (request.startsWith("@qwen-code")) {
-              const additionalContext = request.replace(/^@qwen-code/, '').trim();
+            } else if (request.startsWith("@qwencoder")) {
+              const additionalContext = request.replace(/^@qwencoder/, '').trim();
               core.setOutput('command', 'invoke');
               core.setOutput('additional_context', additionalContext);
             } else {

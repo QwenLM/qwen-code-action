@@ -82,7 +82,7 @@ The Issue Triage workflows are triggered by:
 - **New Issues**: When an issue is opened or reopened (automated triage)
 - **Scheduled Events**: Cron job for batch processing (scheduled triage)
 - **Manual Dispatch**: Via the GitHub Actions UI ("Run workflow")
-- **Issue Comments**: When a comment contains `@qwen-code /triage`
+- **Issue Comments**: When a comment contains `@qwencoder /triage`
 
 ### Real-Time Issue Triage
 
@@ -98,7 +98,7 @@ This workflow is defined in `workflows/issue-triage/qwen-scheduled-triage.yml` a
 You can manually trigger triage by commenting on an issue:
 
 ```
-@qwen-code /triage
+@qwencoder /triage
 ```
 
 ## Interaction Flow
@@ -109,7 +109,7 @@ flowchart TD
         A[Issue Opened or Reopened]
         B[Scheduled Cron Job]
         C[Manual Dispatch]
-        D[Issue Comment with '@qwen-code /triage' Created]
+        D[Issue Comment with '@qwencoder /triage' Created]
     end
 
     subgraph "Qwen Code Workflow"
@@ -176,7 +176,7 @@ For more details on workflow configuration, see the [Configuration Guide](../CON
 ### Basic Triage Request
 
 ```
-@qwen-code /triage
+@qwencoder /triage
 ```
 
 ### Automatic Labeling

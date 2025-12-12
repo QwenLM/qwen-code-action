@@ -23,9 +23,9 @@ This workflow is triggered by the following events:
 
 The workflow uses a dispatch job to determine which command to execute based on the following logic:
 
-- If a comment contains `@qwen-code /review`, it calls the `qwen-review.yml` workflow.
-- If a comment contains `@qwen-code /triage`, it calls the `qwen-triage.yml` workflow.
-- If a comment contains `@qwen-code` (without a specific command), it calls the `qwen-invoke.yml` workflow.
+- If a comment contains `@qwencoder /review`, it calls the `qwen-review.yml` workflow.
+- If a comment contains `@qwencoder /triage`, it calls the `qwen-triage.yml` workflow.
+- If a comment contains `@qwencoder` (without a specific command), it calls the `qwen-invoke.yml` workflow.
 - When a new pull request is opened, it calls the `qwen-review.yml` workflow.
 - When a new issue is opened or reopened, it calls the `qwen-triage.yml` workflow.
 
@@ -40,10 +40,10 @@ The workflow uses a dispatch job to determine which command to execute based on 
 You can easily extend the dispatch workflow to include your own custom workflows. Here's how:
 
 1. **Create your workflow file:** Create a new YAML file in the `.github/workflows` directory with your custom workflow logic. Make sure your workflow is designed to be called by `workflow_call`.
-2. **Define a new command:** Decide on a new command to trigger your workflow, for example, `@qwen-code /my-command`.
+2. **Define a new command:** Decide on a new command to trigger your workflow, for example, `@qwencoder /my-command`.
 3. **Update the `dispatch` job:** In `qwen-dispatch.yml`, add a new condition to the `if` statement in the `dispatch` job to recognize your new command.
 4. **Add a new job to call your workflow:** Add a new job to `qwen-dispatch.yml` that calls your custom workflow file.
 
 ## Usage
 
-To use this workflow, simply trigger one of the events listed above. For comment-based triggers, make sure the comment starts with `@qwen-code` and the appropriate command.
+To use this workflow, simply trigger one of the events listed above. For comment-based triggers, make sure the comment starts with `@qwencoder` and the appropriate command.

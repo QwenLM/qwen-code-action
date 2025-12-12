@@ -45,4 +45,4 @@ When asked to modify the action, you should:
 * **Authentication:** This action uses OpenAI-compatible API authentication with DashScope (Alibaba Cloud).
 * **CLI Installation:** The action installs the Qwen Code CLI from npm (@qwen-code/qwen-code) or from GitHub.
 * **Configuration:** Settings are stored in `.qwen/settings.json` and commands in `.qwen/commands/`.
-* **Interaction:** Users mention `@qwen-code` in issues/PRs to trigger the action.
+* **Interaction:** Users mention `@qwencoder` in issues/PRs to trigger the action.

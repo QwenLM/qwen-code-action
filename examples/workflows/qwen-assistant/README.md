@@ -1,7 +1,7 @@
 
 # Qwen Code Assistant
 
-In this guide you will learn how to use the Qwen Code Assistant via GitHub Actions. It serves as an on-demand collaborator you can quickly delegate work to, invoked directly in GitHub Pull Request and Issue comments to perform a wide range of tasks—from code analysis and modifications to project management. When you invoke the workflow via `@qwen-code`, it uses a customizable set of tools to understand the context, execute your request, and respond within the same thread.
+In this guide you will learn how to use the Qwen Code Assistant via GitHub Actions. It serves as an on-demand collaborator you can quickly delegate work to, invoked directly in GitHub Pull Request and Issue comments to perform a wide range of tasks—from code analysis and modifications to project management. When you invoke the workflow via `@qwencoder`, it uses a customizable set of tools to understand the context, execute your request, and respond within the same thread.
 
 - [Qwen Code Assistant](#qwen-code-assistant)
   - [Overview](#overview)
@@ -85,14 +85,14 @@ The Qwen Code Assistant workflow is intentionally configured *not* to respond to
 
 ### How to Invoke the Qwen Code Workflow
 
-To use the general Qwen Code workflow, just mention `@qwen-code` in a comment in a GitHub Pull Request or an Issue, followed by your request. For example:
+To use the general Qwen Code workflow, just mention `@qwencoder` in a comment in a GitHub Pull Request or an Issue, followed by your request. For example:
 
 ```
-@qwen-code Please explain what the `main.go` file does.
+@qwencoder Please explain what the `main.go` file does.
 ```
 
 ```
-@qwen-code Refactor the `calculateTotal` function in `src/utils.js` to improve readability.
+@qwencoder Refactor the `calculateTotal` function in `src/utils.js` to improve readability.
 ```
 
 ## Interaction Flow
@@ -102,7 +102,7 @@ The workflow follows a clear, multi-step process to handle requests:
 ```mermaid
 flowchart TD
     subgraph "User Interaction"
-      A[User posts comment with '@qwen-code <request>']
+      A[User posts comment with '@qwencoder <request>']
       F{Approve plan?}
     end
 
@@ -134,7 +134,7 @@ flowchart TD
 ```
 
 1. **Acknowledge**: The action first posts a brief comment to let the user know the request has been received.
-2. **Plan (if needed)**: For requests that may involve code changes or complex actions, the AI will first create a step-by-step plan. It will post this plan as a comment and wait for the user to approve it by replying with `@qwen-code plan#123 approved`. This ensures the user has full control before any changes are made.
+2. **Plan (if needed)**: For requests that may involve code changes or complex actions, the AI will first create a step-by-step plan. It will post this plan as a comment and wait for the user to approve it by replying with `@qwencoder plan#123 approved`. This ensures the user has full control before any changes are made.
 3. **Execute**: Once the plan is approved (or if no plan was needed), it runs the Qwen Code model, providing it with the user's request, repository context, and a set of tools.
 4. **Commit (if needed)**: If the AI uses tools to modify files, it will automatically commit and push the changes to the branch.
 5. **Respond**: The AI posts a final, comprehensive response as a comment on the issue or pull request.
@@ -176,17 +176,17 @@ More Qwen Code Assistant workflow examples:
 ### Asking a Question
 
 ```
-@qwen-code What is the purpose of the `telemetry.js` script?
+@qwencoder What is the purpose of the `telemetry.js` script?
 ```
 
 ### Requesting a Code Change
 
 ```
-@qwen-code In `package.json`, please add a new script called "test:ci" that runs `npm test`.
+@qwencoder In `package.json`, please add a new script called "test:ci" that runs `npm test`.
 ```
 
 ### Summarizing an Issue
 
 ```
-@qwen-code Can you summarize the main points of this issue thread for me?
+@qwencoder Can you summarize the main points of this issue thread for me?
 ```
