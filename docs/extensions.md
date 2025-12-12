@@ -1,16 +1,16 @@
 # Extensions
 
-Gemini CLI can be extended with additional functionality through extensions.
+Qwen Code can be extended with additional functionality through extensions.
 These extensions are installed from source from their GitHub repositories.
 
 For more information on creating and using extensions, see [documentation].
 
-[documentation]: https://github.com/google-gemini/gemini-cli/blob/main/docs/extensions/index.md
+[documentation]: https://github.com/QwenLM/qwen-code/blob/main/docs/extensions/extension.md
 
 ## Configuration
 
 To use extensions in your GitHub workflow, provide a JSON array of GitHub
-repositories to the `extensions` input of the `run-gemini-cli` action.
+repositories to the `extensions` input of the `qwen-code-action` action.
 
 ### Example
 
@@ -21,14 +21,14 @@ jobs:
   main:
     runs-on: ubuntu-latest
     steps:
-      - id: gemini
-        uses: google-github-actions/run-gemini-cli@v0
+      - id: qwen
+        uses: QwenLM/qwen-code-action@v1
         with:
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          openai_api_key: ${{ secrets.QWEN_API_KEY }}
           prompt: "/security:analyze"
           extensions: |
             [
-              "https://github.com/gemini-cli-extensions/security",
-              "https://github.com/gemini-cli-extensions/code-review"
+              "https://github.com/qwen-cli-extensions/security",
+              "https://github.com/qwen-cli-extensions/code-review"
             ]
 ```
