@@ -18,7 +18,7 @@ This guide covers how to customize and configure Qwen Code workflows to meet you
 
 Qwen Code workflows are highly configurable. You can adjust their behavior by editing the corresponding `.yml` files in your repository.
 
-Qwen Code supports many settings that control how it operates. For a complete list, see the [Qwen Code documentation](https://github.com/QwenLM/qwen-code/blob/main/docs/cli/configuration.md#available-settings-in-settingsjson).
+Qwen Code supports many settings that control how it operates. For a complete list, see the [Qwen Code documentation](https://qwenlm.github.io/qwen-code-docs/en/users/configuration/settings/).
 
 ### Custom Commands (TOML Files)
 

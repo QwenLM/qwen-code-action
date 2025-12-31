@@ -1,6 +1,6 @@
 ## Guidelines for Developing this GitHub Action
 
-This project is a **composite GitHub Action** for Qwen Code CLI integration, designed to be reusable, efficient, and secure for other developers.
+This project is a **composite GitHub Action** for Qwen Code integration, designed to be reusable, efficient, and secure for other developers.
 
 Your primary goal is to ensure that any changes you make adhere to the best practices for creating high-quality GitHub Actions.
 
@@ -43,6 +43,6 @@ When asked to modify the action, you should:
 ### Qwen Code Specific Considerations
 
 * **Authentication:** This action uses OpenAI-compatible API authentication with DashScope (Alibaba Cloud).
-* **CLI Installation:** The action installs the Qwen Code CLI from npm (@qwen-code/qwen-code) or from GitHub.
+* **CLI Installation:** The action installs the Qwen Code from npm (@qwen-code/qwen-code) or from GitHub.
 * **Configuration:** Settings are stored in `.qwen/settings.json` and commands in `.qwen/commands/`.
 * **Interaction:** Users mention `@qwencoder` in issues/PRs to trigger the action.
