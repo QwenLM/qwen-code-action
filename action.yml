@@ -277,8 +277,8 @@ runs:
       env:
         DEBUG: '${{ fromJSON(inputs.qwen_debug || false) }}'
         OPENAI_API_KEY: '${{ inputs.openai_api_key }}'
-        OPENAI_BASE_URL: '${{ inputs.openai_base_url }}'
-        OPENAI_MODEL: '${{ inputs.openai_model }}'
+        OPENAI_BASE_URL: ${{ inputs.openai_base_url || 'https://dashscope.aliyuncs.com/compatible-mode/v1' }}
+        OPENAI_MODEL: ${{ inputs.openai_model || 'qwen-coder-plus-latest' }}
         SURFACE: 'GitHub'
         PROMPT: '${{ inputs.prompt }}'
         GH_WORKFLOW_NAME: '${{ steps.sanitize_workflow_name.outputs.gh_workflow_name }}'
