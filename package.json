@@ -1,7 +1,7 @@
 {
   "name": "qwen-code-action",
   "version": "0.1.0",
-  "description": "GitHub Action for Qwen Code CLI integration",
+  "description": "GitHub Action for Qwen Code integration",
   "scripts": {
     "build": "echo \"No build required for composite action\"",
     "docs": "./node_modules/.bin/actions-gen-readme",

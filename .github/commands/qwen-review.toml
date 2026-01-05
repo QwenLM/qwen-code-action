@@ -1,4 +1,4 @@
-description = "Reviews a pull request with Qwen Code CLI"
+description = "Reviews a pull request with Qwen Code"
 prompt = """
 ## Role
 

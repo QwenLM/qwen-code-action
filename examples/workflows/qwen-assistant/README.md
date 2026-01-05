@@ -52,7 +52,7 @@ gha-creds-*.json
 
 To use this workflow, you can utilize either of the following methods:
 
-1. Run the `/setup-github` command in Qwen Code CLI on your terminal to set up workflows for your repository.
+1. Run the `/setup-github` command in Qwen Code on your terminal to set up workflows for your repository.
 2. Copy the workflow files into your repository's `.github/workflows` directory:
 
 ```bash
@@ -152,13 +152,13 @@ The Qwen Code assistant prompt is defined in the `qwen-invoke.toml` file. The ac
   curl -o .qwen/commands/qwen-invoke.toml https://raw.githubusercontent.com/QwenLM/qwen-code-action/main/examples/workflows/qwen-assistant/qwen-invoke.toml
   ```
 
-2. Edit `.qwen/commands/qwen-invoke.toml` to customize:
+1. Edit `.qwen/commands/qwen-invoke.toml` to customize:
    - Change its persona or primary function
    - Add project-specific guidelines or context
    - Instruct it to format its output in a specific way
    - Modify security constraints or workflow steps
 
-3. Commit the file to your repository:
+2. Commit the file to your repository:
 
   ```bash
   git add .qwen/commands/qwen-invoke.toml

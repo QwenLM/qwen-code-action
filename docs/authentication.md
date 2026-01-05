@@ -1,6 +1,6 @@
 # Authentication
 
-This guide covers how to authenticate the Qwen Code CLI action in your GitHub Actions workflows.
+This guide covers how to authenticate the Qwen Code action in your GitHub Actions workflows.
 
 - [Authentication](#authentication)
   - [Qwen Code API Authentication](#qwen-code-api-authentication)
@@ -8,13 +8,13 @@ This guide covers how to authenticate the Qwen Code CLI action in your GitHub Ac
     - [Setup](#setup)
     - [Example](#example)
   - [GitHub Authentication](#github-authentication)
-    - [Method 1: Using the Default GITHUB_TOKEN](#method-1-using-the-default-github_token)
+    - [Method 1: Using the Default GITHUB\_TOKEN](#method-1-using-the-default-github_token)
     - [Method 2: Using a GitHub App (Recommended)](#method-2-using-a-github-app-recommended)
   - [Additional Resources](#additional-resources)
 
 ## Qwen Code API Authentication
 
-The Qwen Code CLI Action uses OpenAI-compatible API authentication through Alibaba Cloud's DashScope platform.
+The Qwen Code Action uses OpenAI-compatible API authentication through Alibaba Cloud's DashScope platform.
 
 ### Prerequisites
 
@@ -75,5 +75,4 @@ For details, see the [GitHub documentation](https://docs.github.com/en/apps/shar
 ## Additional Resources
 
 - [DashScope Documentation](https://help.aliyun.com/zh/dashscope/)
-- [Qwen Code CLI](https://github.com/QwenLM/qwen-code-cli)
 - [GitHub Actions Security](https://docs.github.com/en/actions/security-guides)

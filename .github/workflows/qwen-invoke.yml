@@ -37,7 +37,7 @@ jobs:
           permission-issues: 'write'
           permission-pull-requests: 'write'
 
-      - name: 'Run Qwen Code CLI'
+      - name: 'Run Qwen Code'
         id: 'run_qwen'
         uses: 'QwenLM/qwen-code-action@v1' # ratchet:exclude
         env:
