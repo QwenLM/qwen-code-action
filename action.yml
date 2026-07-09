@@ -263,15 +263,27 @@ runs:
         fi
         echo "EOF" >> "${GITHUB_OUTPUT}"
 
+        # Always emit stderr to the step log so silent failures (exit 0 with
+        # empty/broken output) are diagnosable from the Actions log alone.
+        if [[ -s "${TEMP_STDERR}" ]]; then
+          echo "::: Start Qwen Code STDERR :::"
+          cat "${TEMP_STDERR}"
+          echo "::: End Qwen Code STDERR :::"
+        fi
+
+        # Warn on empty response after a successful exit — the caller workflow
+        # cannot distinguish "agent did nothing" from "agent succeeded" without
+        # this signal.
+        if [[ "${FAILED}" = false && -z "${RESPONSE}" ]]; then
+          echo "::warning title=Qwen Code empty response::Qwen Code exited successfully but produced no response. Check stderr above for diagnostics."
+        fi
+
         if [[ "${FAILED}" = true ]]; then
           # If we have a structured error from JSON, use it for the error message
           if [[ -n "${ERROR_JSON}" ]]; then
              ERROR_MSG=$(jq -r '.message // .' <<< "${ERROR_JSON}")
              echo "::error title=Qwen Code execution failed::${ERROR_MSG}"
           fi
-          echo "::: Start Qwen Code STDERR :::"
-          cat "${TEMP_STDERR}"
-          echo "::: End Qwen Code STDERR :::"
           exit 1
         fi
       env:
