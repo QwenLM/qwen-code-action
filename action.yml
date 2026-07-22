@@ -56,6 +56,10 @@ inputs:
     description: 'Whether or not to use pnpm instead of npm to install qwen-code'
     required: false
     default: 'false'
+  skip_install:
+    description: 'Skip installing Qwen Code. Use when the CLI is already pre-installed on the runner (e.g. self-hosted ECS runners).'
+    required: false
+    default: 'false'
   workflow_name:
     description: 'The GitHub workflow name, used for telemetry purposes.'
     required: false
@@ -129,13 +133,15 @@ runs:
 
     - name: 'Install pnpm'
       if: |-
-        ${{ inputs.use_pnpm == 'true' }}
+        ${{ inputs.use_pnpm == 'true' && inputs.skip_install != 'true' }}
       uses: 'pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061' # ratchet:pnpm/action-setup@v4
       with:
         version: 10
 
     - name: 'Install Qwen Code'
       id: 'install'
+      if: |-
+        ${{ inputs.skip_install != 'true' }}
       env:
         QWEN_CLI_VERSION: '${{ inputs.qwen_cli_version }}'
         EXTENSIONS: '${{ inputs.extensions }}'
@@ -178,6 +184,20 @@ runs:
               echo "Y" | qwen extensions install "${extension}"
             fi
           done
+        fi
+
+    - name: 'Verify pre-installed Qwen Code'
+      if: |-
+        ${{ inputs.skip_install == 'true' }}
+      shell: 'bash'
+      run: |-
+        set -euo pipefail
+        if command -v qwen >/dev/null 2>&1; then
+          echo "Using pre-installed Qwen Code:"
+          qwen --version || echo "(version command not available)"
+        else
+          echo "::error title=Qwen Code not found::skip_install is true but 'qwen' is not in PATH. Ensure the CLI is pre-installed on this runner."
+          exit 1
         fi
 
     - name: 'Run Qwen Code'
