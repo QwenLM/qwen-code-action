@@ -146,28 +146,33 @@ runs:
 
         VERSION_INPUT="${QWEN_CLI_VERSION:-latest}"
 
-        if [[ "${VERSION_INPUT}" == "latest" || "${VERSION_INPUT}" == "preview" || "${VERSION_INPUT}" == "nightly" || "${VERSION_INPUT}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9\.-]+)?(\+[a-zA-Z0-9\.-]+)?$ ]]; then
-          echo "Installing Qwen Code from npm: @qwen-code/qwen-code@${VERSION_INPUT}"
-          if [[ "${USE_PNPM}" == "true" ]]; then
-            pnpm add --silent --global @qwen-code/qwen-code@"${VERSION_INPUT}"
-          else
-            npm install --silent --no-audit --prefer-offline --global @qwen-code/qwen-code@"${VERSION_INPUT}"
-          fi
-        else
-          echo "Installing Qwen Code from GitHub: github:QwenLM/qwen-code#${VERSION_INPUT}"
-          git clone https://github.com/QwenLM/qwen-code.git
-          cd qwen-code
-          git checkout "${VERSION_INPUT}"
-          npm install
-          npm run bundle
-          npm install --silent --no-audit --prefer-offline --global .
-        fi
-        echo "Verifying installation:"
         if command -v qwen >/dev/null 2>&1; then
-          qwen --version || echo "Qwen Code installed successfully (version command not available)"
+          echo "Qwen Code already installed, skipping install:"
+          qwen --version
         else
-          echo "Error: Qwen Code not found in PATH"
-          exit 1
+          if [[ "${VERSION_INPUT}" == "latest" || "${VERSION_INPUT}" == "preview" || "${VERSION_INPUT}" == "nightly" || "${VERSION_INPUT}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9\.-]+)?(\+[a-zA-Z0-9\.-]+)?$ ]]; then
+            echo "Installing Qwen Code from npm: @qwen-code/qwen-code@${VERSION_INPUT}"
+            if [[ "${USE_PNPM}" == "true" ]]; then
+              pnpm add --loglevel=error --global @qwen-code/qwen-code@"${VERSION_INPUT}"
+            else
+              npm install --loglevel=error --no-audit --prefer-offline --global @qwen-code/qwen-code@"${VERSION_INPUT}"
+            fi
+          else
+            echo "Installing Qwen Code from GitHub: github:QwenLM/qwen-code#${VERSION_INPUT}"
+            git clone https://github.com/QwenLM/qwen-code.git
+            cd qwen-code
+            git checkout "${VERSION_INPUT}"
+            npm install
+            npm run bundle
+            npm install --loglevel=error --no-audit --prefer-offline --global .
+          fi
+          echo "Verifying installation:"
+          if command -v qwen >/dev/null 2>&1; then
+            qwen --version || echo "Qwen Code installed successfully (version command not available)"
+          else
+            echo "Error: Qwen Code not found in PATH"
+            exit 1
+          fi
         fi
         if [[ -n "${EXTENSIONS}" ]]; then
           echo "Installing Qwen Code extensions:"
