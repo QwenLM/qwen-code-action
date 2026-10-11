@@ -215,8 +215,10 @@ runs:
         # cleaned up later
         TEMP_STDOUT="$(mktemp -p "${RUNNER_TEMP}" qwen-out.XXXXXXXXXX)"
         TEMP_STDERR="$(mktemp -p "${RUNNER_TEMP}" qwen-err.XXXXXXXXXX)"
+        TEMP_RESPONSE="$(mktemp -p "${RUNNER_TEMP}" qwen-response.XXXXXXXXXX)"
+        TEMP_ERROR="$(mktemp -p "${RUNNER_TEMP}" qwen-error.XXXXXXXXXX)"
         function cleanup {
-          rm -f "${TEMP_STDOUT}" "${TEMP_STDERR}"
+          rm -f "${TEMP_STDOUT}" "${TEMP_STDERR}" "${TEMP_RESPONSE}" "${TEMP_ERROR}"
         }
         trap cleanup EXIT
 
@@ -270,23 +272,45 @@ runs:
         fi
 
 
-        # Set the captured response as a step output, supporting multiline
-        echo "qwen_response<<EOF" >> "${GITHUB_OUTPUT}"
-        if [[ -n "${RESPONSE}" ]]; then
-          echo "${RESPONSE}" >> "${GITHUB_OUTPUT}"
-        else
-          cat "${TEMP_STDOUT}" >> "${GITHUB_OUTPUT}"
-        fi
-        echo "EOF" >> "${GITHUB_OUTPUT}"
+        # The response can contain any line, including the output delimiter.
+        contains_delimiter() {
+          local line
+          while IFS= read -r line || [[ -n "${line}" ]]; do
+            if [[ "${line%$'\r'}" == "$2" ]]; then
+              return 0
+            fi
+          done < "$1"
+          return 1
+        }
 
-        # Set the captured errors as a step output, supporting multiline
-        echo "qwen_errors<<EOF" >> "${GITHUB_OUTPUT}"
-        if [[ -n "${ERROR_JSON}" ]]; then
-          echo "${ERROR_JSON}" >> "${GITHUB_OUTPUT}"
-        else
-          cat "${TEMP_STDERR}" >> "${GITHUB_OUTPUT}"
+        write_output() {
+          local name="$1" file="$2" delimiter="EOF"
+          while contains_delimiter "${file}" "${delimiter}"; do
+            delimiter="${delimiter}_"
+          done
+          {
+            printf '%s<<%s\n' "${name}" "${delimiter}"
+            cat "${file}"
+            # The separator also preserves trailing newlines in the value.
+            printf '\n'
+            printf '%s\n' "${delimiter}"
+          } >> "${GITHUB_OUTPUT}"
+        }
+
+        # Set the captured response and errors as step outputs, supporting multiline
+        RESPONSE_FILE="${TEMP_STDOUT}"
+        if [[ -n "${RESPONSE}" ]]; then
+          printf '%s' "${RESPONSE}" > "${TEMP_RESPONSE}"
+          RESPONSE_FILE="${TEMP_RESPONSE}"
         fi
-        echo "EOF" >> "${GITHUB_OUTPUT}"
+        write_output "qwen_response" "${RESPONSE_FILE}"
+
+        ERROR_FILE="${TEMP_STDERR}"
+        if [[ -n "${ERROR_JSON}" ]]; then
+          printf '%s' "${ERROR_JSON}" > "${TEMP_ERROR}"
+          ERROR_FILE="${TEMP_ERROR}"
+        fi
+        write_output "qwen_errors" "${ERROR_FILE}"
 
         # Always emit stderr to the step log so silent failures (exit 0 with
         # empty/broken output) are diagnosable from the Actions log alone.
