@@ -68,21 +68,35 @@ jobs:
         env:
           GITHUB_REPOSITORY: '${{ github.repository }}'
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN || github.token }}'
-        run: |-
-          echo '🔍 Finding unlabeled issues and issues marked for triage...'
-          ISSUES="$(gh issue list \
-            --state 'open' \
-            --search 'no:label label:"status/needs-triage"' \
-            --json number,title,body,authorAssociation \
-            --limit '100' \
-            --repo "${GITHUB_REPOSITORY}" \
-            | jq '[.[] | select(.authorAssociation == "OWNER" or .authorAssociation == "MEMBER" or .authorAssociation == "COLLABORATOR") | {number, title, body}]')"
-
-          echo '📝 Setting output for GitHub Actions...'
-          echo "issues_to_triage=${ISSUES}" >> "${GITHUB_OUTPUT}"
-
-          ISSUE_COUNT="$(echo "${ISSUES}" | jq 'length')"
-          echo "✅ Found ${ISSUE_COUNT} issue(s) to triage! 🎯"
+        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # ratchet:actions/github-script@v7.0.1
+        with:
+          script: |-
+            // Only issues from trusted authors reach the agent. The REST API
+            // exposes author_association (gh issue list --json does not).
+            const trusted = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+            const candidates = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const issues = candidates
+              .filter((issue) => !issue.pull_request)
+              .filter((issue) => {
+                const labels = (issue.labels || []).map((label) =>
+                  typeof label === 'string' ? label : label.name,
+                );
+                return labels.length === 0 || labels.includes('status/needs-triage');
+              })
+              .filter((issue) => trusted.has(issue.author_association))
+              .slice(0, 100)
+              .map((issue) => ({
+                number: issue.number,
+                title: issue.title,
+                body: issue.body || '',
+              }));
+            core.setOutput('issues_to_triage', JSON.stringify(issues));
+            core.info(`Found ${issues.length} trusted-author issue(s) to triage.`);
 
       - name: 'Run Qwen Code Issue Analysis'
         id: 'qwen_issue_analysis'
