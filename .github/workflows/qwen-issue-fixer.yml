@@ -2,6 +2,13 @@ name: '🧙 Qwen Issue Fixer'
 
 on:
   workflow_call:
+    secrets:
+      QWEN_API_KEY:
+        description: 'The API key for the Qwen Code API.'
+        required: false
+      APP_PRIVATE_KEY:
+        description: 'The private key of the GitHub App used for identity.'
+        required: false
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-${{ github.event.issue.number }}'

@@ -53,6 +53,46 @@ jobs:
           ref: '${{ github.event.pull_request.base.sha || github.sha }}'
           persist-credentials: false
 
+      - name: 'Prepare GitHub MCP config'
+        shell: 'bash'
+        env:
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+        run: |-
+          set -euo pipefail
+          # Workspace settings MCP servers are approval-gated in non-YOLO
+          # modes; --mcp-config servers are caller-supplied and never gated.
+          # Write the token-bearing config outside the workspace so the
+          # agent's file tools cannot read it.
+          MCP_CONFIG_FILE="$(mktemp -p "${RUNNER_TEMP}" qwen-mcp.XXXXXXXXXX.json)"
+          chmod 600 "${MCP_CONFIG_FILE}"
+          TOKEN="${GITHUB_TOKEN}" python3 - "${MCP_CONFIG_FILE}" <<'PY'
+          import json
+          import os
+          import sys
+
+          config = {
+              'mcpServers': {
+                  'github': {
+                      'command': 'docker',
+                      'args': [
+                          'run', '-i', '--rm', '-e', 'GITHUB_PERSONAL_ACCESS_TOKEN',
+                          'ghcr.io/github/github-mcp-server@sha256:6aa543f565bc98d96106fdd80a0abdc0c7147c8ca7f4663a814ceecef1ccc6d3',
+                      ],
+                      'includeTools': [
+                          'add_comment_to_pending_review',
+                          'create_pending_pull_request_review',
+                          'pull_request_read',
+                          'submit_pending_pull_request_review',
+                      ],
+                      'env': {'GITHUB_PERSONAL_ACCESS_TOKEN': os.environ['TOKEN']},
+                  }
+              }
+          }
+          with open(sys.argv[1], 'w') as out:
+              json.dump(config, out)
+          PY
+          echo "MCP_CONFIG_FILE=${MCP_CONFIG_FILE}" >> "${GITHUB_ENV}"
+
       - name: 'Run Qwen Code pull request review'
         uses: 'QwenLM/qwen-code-action@v1' # ratchet:exclude
         id: 'qwen_pr_review'
@@ -72,6 +112,7 @@ jobs:
           upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
           workflow_name: 'qwen-review'
           approval_mode: 'default'
+          extra_args: '--mcp-config ${MCP_CONFIG_FILE}'
           settings: |-
             {
               "model": {
@@ -83,28 +124,6 @@ jobs:
                 "outfile": ".qwen/telemetry.log"
               },
               "disableAllHooks": true,
-              "mcpServers": {
-                "github": {
-                  "command": "docker",
-                  "args": [
-                    "run",
-                    "-i",
-                    "--rm",
-                    "-e",
-                    "GITHUB_PERSONAL_ACCESS_TOKEN",
-                    "ghcr.io/github/github-mcp-server@sha256:6aa543f565bc98d96106fdd80a0abdc0c7147c8ca7f4663a814ceecef1ccc6d3"
-                  ],
-                  "includeTools": [
-                    "add_comment_to_pending_review",
-                    "create_pending_pull_request_review",
-                    "pull_request_read",
-                    "submit_pending_pull_request_review"
-                  ],
-                  "env": {
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
-                  }
-                }
-              },
               "permissions": {
                 "allow": [
                   "mcp__github__add_comment_to_pending_review",

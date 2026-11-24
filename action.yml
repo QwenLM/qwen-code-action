@@ -62,6 +62,14 @@ inputs:
       auto-approved.
     required: false
     default: 'yolo'
+  extra_args:
+    description: |-
+      Additional CLI arguments appended to the qwen invocation, expanded by
+      the step shell. Caller-controlled only — never derive this from
+      untrusted event content. Use for flags such as --mcp-config, whose
+      servers are caller-supplied and bypass the workspace MCP approval gate.
+    required: false
+    default: ''
   use_pnpm:
     description: 'Whether or not to use pnpm instead of npm to install qwen-code'
     required: false
@@ -129,6 +137,10 @@ runs:
         # Drop settings that came with the checked-out code (e.g. a pull
         # request) so they cannot widen the agent's permissions.
         rm -f .qwen/settings.json
+        # A checked-out .mcp.json / .env is likewise untrusted input: the CLI
+        # loads project MCP servers from .mcp.json and model credentials from
+        # .env files. The caller's settings input is the only project config.
+        rm -f .mcp.json .env .qwen/.env
         if [[ -n "${SETTINGS}" ]]; then
           printf '%s' "${SETTINGS}" > ".qwen/settings.json"
         fi
@@ -145,6 +157,9 @@ runs:
         rm -rf .qwen/commands
         mkdir -p .qwen/commands
         cp -r "${GITHUB_ACTION_PATH}/.github/commands/"* .qwen/commands/
+        # Project skills load from .qwen/skills and .agents/skills in the
+        # workspace; a checkout must not contribute agent instructions either.
+        rm -rf .qwen/skills .agents/skills
       env:
         GITHUB_ACTION_PATH: '${{ github.action_path }}'
 
@@ -379,7 +394,16 @@ runs:
         fi
 
         # We capture stdout (JSON) to TEMP_STDOUT and stderr to TEMP_STDERR
-        if ! qwen --approval-mode "${APPROVAL_MODE}" --prompt "${PROMPT}" --channel=CI --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}"; then
+        # EXTRA_ARGS is caller-supplied (workflow author territory): expand
+        # ${VAR} references and word-split it into flags. envsubst substitutes
+        # variables only — it never executes command substitutions, and the
+        # prompt itself is passed as one quoted argument, never re-parsed.
+        EXTRA_ARGS_EXPANDED="$(printf '%s' "${EXTRA_ARGS}" | envsubst)"
+        EXTRA_ARGV=()
+        if [[ -n "${EXTRA_ARGS_EXPANDED}" ]]; then
+          read -r -a EXTRA_ARGV <<< "${EXTRA_ARGS_EXPANDED}"
+        fi
+        if ! qwen --approval-mode "${APPROVAL_MODE}" "${EXTRA_ARGV[@]}" --prompt "${PROMPT}" --channel=CI --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}"; then
           FAILED=true
         fi
 
@@ -464,6 +488,7 @@ runs:
       env:
         DEBUG: '${{ fromJSON(inputs.qwen_debug || false) }}'
         APPROVAL_MODE: '${{ inputs.approval_mode }}'
+        EXTRA_ARGS: '${{ inputs.extra_args }}'
         OPENAI_API_KEY: '${{ inputs.openai_api_key }}'
         OPENAI_BASE_URL: ${{ inputs.openai_base_url || 'https://dashscope.aliyuncs.com/compatible-mode/v1' }}
         OPENAI_MODEL: ${{ inputs.openai_model || 'qwen-coder-plus-latest' }}
