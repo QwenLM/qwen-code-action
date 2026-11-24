@@ -15,7 +15,7 @@ on:
 
 jobs:
   draft-release:
-    uses: 'google-github-actions/.github/.github/workflows/draft-release.yml@v3' # ratchet:exclude
+    uses: 'google-github-actions/.github/.github/workflows/draft-release.yml@29c6d38eeb974133b4b66401985f7c70cf4a6681' # ratchet:google-github-actions/.github/.github/workflows/draft-release.yml@v3
     permissions:
       contents: 'read'
       pull-requests: 'write'

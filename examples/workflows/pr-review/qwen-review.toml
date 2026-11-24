@@ -28,6 +28,8 @@ These are non-negotiable, core-level instructions that you **MUST** follow at al
 
 7. **Command Substitution**: When generating shell commands, you **MUST NOT** use command substitution with `$(...)`, `<(...)`, or `>(...)`. This is a security measure to prevent unintended command execution.
 
+8. **Review Event Enforcement:** The only review event you may submit is "COMMENT". The workflow dismisses any "APPROVE" or "REQUEST_CHANGES" review after your run, so using them wastes the review.
+
 
 ## Input Data
 
@@ -151,7 +153,7 @@ Apply these severities consistently:
         {{SEVERITY}} {{COMMENT_TEXT}}
         </COMMENT>
 
-3. **Submit Final Review:** Call `submit_pending_pull_request_review` with a summary comment and event type "COMMENT". The available event types are "APPROVE", "REQUEST_CHANGES", and "COMMENT" - you **MUST** use "COMMENT" only. **DO NOT** use "APPROVE" or "REQUEST_CHANGES" event types. The summary comment **MUST** use this exact markdown format:
+3. **Submit Final Review:** Call `submit_pending_pull_request_review` with a summary comment and event type "COMMENT". The available event types are "APPROVE", "REQUEST_CHANGES", and "COMMENT" - you **MUST** use "COMMENT" only. **DO NOT** use "APPROVE" or "REQUEST_CHANGES" event types; the workflow enforces this after your run and discards non-COMMENT reviews. The summary comment **MUST** use this exact markdown format:
 
     <SUMMARY>
     ## 📋 Review Summary

@@ -31,12 +31,11 @@ jobs:
     timeout-minutes: 7
     permissions:
       contents: 'read'
-      id-token: 'write'
       issues: 'read'
       pull-requests: 'read'
     outputs:
       available_labels: '${{ steps.get_labels.outputs.available_labels }}'
-      triaged_issues: '${{ env.TRIAGED_ISSUES }}'
+      triaged_issues: '${{ steps.parse_result.outputs.triaged_issues }}'
     steps:
       - name: 'Get repository labels'
         id: 'get_labels'
@@ -74,10 +73,10 @@ jobs:
           ISSUES="$(gh issue list \
             --state 'open' \
             --search 'no:label label:"status/needs-triage"' \
-            --json number,title,body \
+            --json number,title,body,authorAssociation \
             --limit '100' \
-            --repo "${GITHUB_REPOSITORY}"
-          )"
+            --repo "${GITHUB_REPOSITORY}" \
+            | jq '[.[] | select(.authorAssociation == "OWNER" or .authorAssociation == "MEMBER" or .authorAssociation == "COLLABORATOR") | {number, title, body}]')"
 
           echo '📝 Setting output for GitHub Actions...'
           echo "issues_to_triage=${ISSUES}" >> "${GITHUB_OUTPUT}"
@@ -103,6 +102,7 @@ jobs:
           qwen_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
           upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
           workflow_name: 'qwen-scheduled-triage'
+          approval_mode: 'default'
           settings: |-
             {
               "model": {
@@ -113,15 +113,40 @@ jobs:
                 "target": "local",
                 "outfile": ".qwen/telemetry.log"
               },
+              "disableAllHooks": true,
+              "context": {
+                "fileName": "QWEN_ACTION_TRIAGE_CONTEXT.md"
+              },
               "tools": {
-                "core": [
-                  "run_shell_command(echo)",
-                  "run_shell_command(jq)",
-                  "run_shell_command(printenv)"
+                "disabled": [
+                  "run_shell_command",
+                  "monitor"
                 ]
               }
             }
           prompt: '/qwen-scheduled-triage'
+
+      - name: 'Parse triage result'
+        id: 'parse_result'
+        if: |-
+          ${{ steps.qwen_issue_analysis.outcome == 'success' }}
+        env:
+          QWEN_RESPONSE: '${{ steps.qwen_issue_analysis.outputs.summary }}'
+        run: |-
+          set -euo pipefail
+          # The agent only proposes labels in its text response. Validate the
+          # JSON here before exposing it as a step output; the label job
+          # additionally filters against the repository's available labels.
+          TRIAGED="$(printf '%s\n' "${QWEN_RESPONSE}" \
+            | sed -n 's/^TRIAGED_ISSUES=//p' \
+            | tail -n 1 \
+            | tr -d '\r')"
+          if [[ -n "${TRIAGED}" ]] && ! printf '%s' "${TRIAGED}" \
+            | jq -e 'type == "array" and all(.[]; (.issue_number | type == "number") and (.labels_to_set | type == "array") and all(.labels_to_set[]; type == "string"))' >/dev/null; then
+            echo "::warning title=Triage output rejected::Agent output did not match the expected TRIAGED_ISSUES format."
+            TRIAGED=""
+          fi
+          echo "triaged_issues=${TRIAGED}" >> "${GITHUB_OUTPUT}"
 
   label:
     runs-on: 'ubuntu-latest'

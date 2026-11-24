@@ -27,28 +27,17 @@ You are an issue triage assistant. Analyze the current GitHub issue and identify
 !{echo $ISSUE_BODY}
 ```
 
-**Output File Path**:
-```
-!{echo $GITHUB_ENV}
-```
-
 ## Steps
 
 1. Review the issue title, issue body, and available labels provided above.
 
 2. Based on the issue title and issue body, classify the issue and choose all appropriate labels from the list of available labels.
 
-3. Convert the list of appropriate labels into a comma-separated list (CSV). If there are no appropriate labels, use the empty string.
-
-4. Use the "echo" shell command to append the CSV labels to the output file path provided above:
-
-    ```
-    echo "SELECTED_LABELS=[APPROPRIATE_LABELS_AS_CSV]" >> "[filepath_for_env]"
-    ```
+3. Respond with a single line and nothing else: the chosen labels as a comma-separated list (CSV), prefixed with `SELECTED_LABELS=`. If there are no appropriate labels, respond with exactly `SELECTED_LABELS=`. Do not use any tools; do not write to any file or environment variable.
 
     for example:
 
     ```
-    echo "SELECTED_LABELS=bug,enhancement" >> "/tmp/runner/env"
+    SELECTED_LABELS=bug,enhancement
     ```
 """

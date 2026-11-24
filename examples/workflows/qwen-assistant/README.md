@@ -1,7 +1,7 @@
 
 # Qwen Code Assistant
 
-In this guide you will learn how to use the Qwen Code Assistant via GitHub Actions. It serves as an on-demand collaborator you can quickly delegate work to, invoked directly in GitHub Pull Request and Issue comments to perform a wide range of tasks—from code analysis and modifications to project management. When you invoke the workflow via `@qwencoder`, it uses a customizable set of tools to understand the context, execute your request, and respond within the same thread.
+In this guide you will learn how to use the Qwen Code Assistant via GitHub Actions. It serves as an on-demand collaborator you can quickly delegate work to, invoked directly in GitHub Pull Request and Issue comments to perform a wide range of tasks—from code analysis to implementation planning. When you invoke the workflow via `@qwencoder`, it uses a customizable set of read-only tools to understand the context, answer your request or propose a plan, and respond within the same thread.
 
 - [Qwen Code Assistant](#qwen-code-assistant)
   - [Overview](#overview)
@@ -22,14 +22,14 @@ In this guide you will learn how to use the Qwen Code Assistant via GitHub Actio
 
 ## Overview
 
-Unlike specialized Qwen Code workflows for [pull request reviews](../pr-review) or [issue triage](../issue-triage), the Qwen Code Assistant is designed to handle a broad variety of requests, from answering questions about the code to performing complex code modifications, as demonstrated further in this document.
+Unlike specialized Qwen Code workflows for [pull request reviews](../pr-review) or [issue triage](../issue-triage), the Qwen Code Assistant is designed to handle a broad variety of requests, from answering questions about the code to proposing detailed implementation plans, as demonstrated further in this document. It does not modify code itself; a maintainer carries out any proposed changes.
 
 ## Features
 
 - **Conversational Interface**: You can interact with the Qwen Code AI assistant directly in GitHub Issue and PR comments.
 - **Repository Interaction**: The Qwen Code can read files, view diffs in Pull Requests, and inspect Issue details.
-- **Code Modification**: The Qwen Code is capable of writing to files, committing changes, and pushing to the branch.
-- **Customizable Toolset**: You can define exactly which shell commands and tools the Qwen Code AI is allowed to use.
+- **Implementation Plans**: For change requests, the Qwen Code posts a step-by-step plan that a maintainer can review and implement.
+- **Customizable Toolset**: You can define exactly which read-only tools the Qwen Code AI is allowed to use.
 - **Flexible Prompting**: You can tailor the Qwen Code's role, instructions, and guidelines to fit your project's needs.
 
 ## Setup
@@ -92,52 +92,35 @@ To use the general Qwen Code workflow, just mention `@qwencoder` in a comment in
 ```
 
 ```
-@qwencoder Refactor the `calculateTotal` function in `src/utils.js` to improve readability.
+@qwencoder Propose a plan to refactor the `calculateTotal` function in `src/utils.js` to improve readability.
 ```
 
 ## Interaction Flow
 
-The workflow follows a clear, multi-step process to handle requests:
+The assistant operates in a read-only planning role: it can read repository data and post comments, but it has no tools that modify code, branches, files, or pull requests. Any code changes in its plan must be carried out by a maintainer.
 
 ```mermaid
 flowchart TD
     subgraph "User Interaction"
       A[User posts comment with '@qwencoder <request>']
-      F{Approve plan?}
+      F[Maintainer reviews plan]
     end
 
     subgraph "Qwen Code Workflow"
       B[Acknowledge Request]
-      C[Checkout Code]
       D[Run Qwen Code]
-      E{Is a plan required?}
-      G[Post Plan for Approval]
-      H[Execute Request]
-      I{Request involves code changes?}
-      J[Commit and Push Changes]
-      K[Post Final Response]
+      G[Post Plan or Answer]
     end
 
     A --> B
-    B --> C
-    C --> D
-    D --> E
-    E -- Yes --> G
+    B --> D
+    D --> G
     G --> F
-    F -- Yes --> H
-    F -- No --> K
-    E -- No --> H
-    H --> I
-    I -- Yes --> J
-    J --> K
-    I -- No --> K
 ```
 
 1. **Acknowledge**: The action first posts a brief comment to let the user know the request has been received.
-2. **Plan (if needed)**: For requests that may involve code changes or complex actions, the AI will first create a step-by-step plan. It will post this plan as a comment and wait for the user to approve it by replying with `@qwencoder plan#123 approved`. This ensures the user has full control before any changes are made.
-3. **Execute**: Once the plan is approved (or if no plan was needed), it runs the Qwen Code model, providing it with the user's request, repository context, and a set of tools.
-4. **Commit (if needed)**: If the AI uses tools to modify files, it will automatically commit and push the changes to the branch.
-5. **Respond**: The AI posts a final, comprehensive response as a comment on the issue or pull request.
+2. **Analyze**: The agent gathers context through read-only GitHub tools (issues, pull request diffs, file contents).
+3. **Respond**: The agent posts its answer or a step-by-step plan as a comment. Plans are advisory; a maintainer decides whether to implement them.
 
 ## Configuration
 
