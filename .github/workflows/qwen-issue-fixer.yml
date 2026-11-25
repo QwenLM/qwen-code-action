@@ -2,6 +2,13 @@ name: '🧙 Qwen Issue Fixer'
 
 on:
   workflow_call:
+    secrets:
+      QWEN_API_KEY:
+        description: 'The API key for the Qwen Code API.'
+        required: false
+      APP_PRIVATE_KEY:
+        description: 'The private key of the GitHub App used for identity.'
+        required: false
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-${{ github.event.issue.number }}'
@@ -17,7 +24,6 @@ jobs:
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'write'      # Enable reading and modifying code
-      id-token: 'write'      # Enable minting an identity token
       issues: 'write'        # Enable updating issues, such as posting a comment
       pull-requests: 'write' # Enable creating pull requests
 
@@ -37,6 +43,8 @@ jobs:
 
       - name: 'Checkout repository'
         uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: 'Run Qwen PR Create'
         uses: 'QwenLM/qwen-code-action@v1'
@@ -51,13 +59,14 @@ jobs:
           EVENT_NAME: '${{ github.event_name }}'
           TRIGGERING_ACTOR: '${{ github.triggering_actor }}'
         with:
-          qwen_api_key: '${{ secrets.QWEN_API_KEY }}'
-          qwen_model: '${{ vars.QWEN_MODEL }}'
-          debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
+          openai_api_key: '${{ secrets.QWEN_API_KEY }}'
+          openai_base_url: '${{ vars.QWEN_BASE_URL }}'
+          openai_model: '${{ vars.QWEN_MODEL }}'
+          qwen_cli_version: '${{ vars.QWEN_CLI_VERSION }}'
+          qwen_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
           upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
           settings: |-
             {
-              "debug": ${{ fromJSON(env.DEBUG || env.ACTIONS_STEP_DEBUG || false) }},
               "model": {
                 "maxSessionTurns": 200
               },

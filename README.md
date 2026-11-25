@@ -173,6 +173,10 @@ go to the [Qwen Code Assistant workflow documentation](./examples/workflows/qwen
 
 - <a name="__input_upload_artifacts"></a><a href="#user-content-__input_upload_artifacts"><code>upload_artifacts</code></a>: _(Optional, default: `false`)_ Whether to upload artifacts to the github action.
 
+- <a name="__input_approval_mode"></a><a href="#user-content-__input_approval_mode"><code>approval_mode</code></a>: _(Optional, default: `yolo`)_ Tool approval mode passed to the Qwen Code `--approval-mode` flag. `yolo` auto-approves every tool call; workflows that process untrusted input (issues, pull requests, comments) should use `default`, where tool calls that are not read-only or explicitly allowed are denied. See [Best Practices](./docs/best-practices.md#untrusted-input-and-tool-approval).
+
+- <a name="__input_extra_args"></a><a href="#user-content-__input_extra_args"><code>extra_args</code></a>: _(Optional)_ Additional CLI arguments appended to the qwen invocation. `${VAR}` references are expanded from the step environment and the result is word-split into flags. Caller-controlled only — never derive this from untrusted event content. Use for flags such as `--mcp-config`, whose servers are caller-supplied and bypass the workspace MCP approval gate.
+
 - <a name="__input_use_pnpm"></a><a href="#user-content-__input_use_pnpm"><code>use_pnpm</code></a>: _(Optional, default: `false`)_ Whether or not to use pnpm instead of npm to install qwen-code-cli
 
 - <a name="__input_workflow_name"></a><a href="#user-content-__input_workflow_name"><code>workflow_name</code></a>: _(Optional, default: `${{ github.workflow }}`)_ The GitHub workflow name, used for telemetry purposes.
