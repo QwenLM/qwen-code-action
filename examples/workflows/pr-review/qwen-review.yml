@@ -136,6 +136,12 @@ jobs:
                 "disabled": [
                   "run_shell_command",
                   "monitor"
+                ],
+                "visible": [
+                  "mcp__github__add_comment_to_pending_review",
+                  "mcp__github__create_pending_pull_request_review",
+                  "mcp__github__pull_request_read",
+                  "mcp__github__submit_pending_pull_request_review"
                 ]
               }
             }
