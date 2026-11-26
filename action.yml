@@ -70,6 +70,15 @@ inputs:
       servers are caller-supplied and bypass the workspace MCP approval gate.
     required: false
     default: ''
+  preserve_workspace_config:
+    description: |-
+      Preserve checked-out .qwen settings, commands, skills, and .mcp.json /
+      .env files. Opt in only for trusted base-branch workspaces whose
+      configuration you intend the agent to load. Untrusted pull requests must
+      not set this. By default those files are cleared so a caller's settings
+      input is the sole project configuration.
+    required: false
+    default: 'false'
   use_pnpm:
     description: 'Whether or not to use pnpm instead of npm to install qwen-code'
     required: false
@@ -134,47 +143,65 @@ runs:
       run: |-
         set -euo pipefail
         mkdir -p .qwen
-        # Drop settings that came with the checked-out code (e.g. a pull
-        # request) so they cannot widen the agent's permissions.
-        rm -f .qwen/settings.json
-        # A checked-out .mcp.json / .env is likewise untrusted input: the CLI
-        # loads project MCP servers from .mcp.json and model credentials from
-        # .env files. The caller's settings input is the only project config.
-        rm -f .mcp.json .env .qwen/.env
+        if [[ "${PRESERVE_WORKSPACE_CONFIG}" != 'true' ]]; then
+          # Drop checked-out agent configuration, including .qwenignore,
+          # which could otherwise hide the authoritative settings below.
+          # settings input is the authoritative project configuration.
+          rm -f .qwen/settings.json .mcp.json .env .qwen/.env .qwenignore
+        fi
         if [[ -n "${SETTINGS}" ]]; then
           printf '%s' "${SETTINGS}" > ".qwen/settings.json"
         fi
       shell: 'bash'
       env:
         SETTINGS: '${{ inputs.settings }}'
+        PRESERVE_WORKSPACE_CONFIG: '${{ inputs.preserve_workspace_config }}'
 
     - name: 'Install Custom Commands'
       shell: 'bash'
       run: |-
         set -euo pipefail
-        # Drop any custom commands that came with the checked-out code (e.g. a
-        # pull request) so they cannot act as agent instructions.
-        rm -rf .qwen/commands
         mkdir -p .qwen/commands
         cp -r "${GITHUB_ACTION_PATH}/.github/commands/"* .qwen/commands/
-        # Project skills load from .qwen/skills and .agents/skills in the
-        # workspace; a checkout must not contribute agent instructions either.
-        rm -rf .qwen/skills .agents/skills
-        # Materialize prompt context files for @{...} injection. In default
-        # approval mode the CLI hard-denies shell tools, which also blocks
-        # !{echo ...} prompt injections; @{} reads a workspace file through
-        # the tool-free file reader instead. Only variables the caller put
-        # in this step's env are written, and the fixed name prefix cannot
-        # collide with checked-out files.
+        if [[ "${PRESERVE_WORKSPACE_CONFIG}" != 'true' ]]; then
+          rm -rf .qwen/skills .agents/skills .qwen/commands/custom
+        fi
+        # The bundled commands use these context files with @{...} rather than
+        # !{echo ...}, because default approval mode denies shell execution in
+        # CI. Keep the original commands for callers in YOLO mode; in other
+        # modes rewrite only this action's bundled commands, never anything
+        # supplied by a downstream consumer.
+        if [[ "${APPROVAL_MODE}" != 'yolo' ]]; then
+          python3 - "${GITHUB_ACTION_PATH}/.github/commands" .qwen/commands <<'PY'
+        import pathlib
+        import re
+        import sys
+
+        bundled = pathlib.Path(sys.argv[1])
+        installed = pathlib.Path(sys.argv[2])
+        # These workflows provide the complete context set below. Other
+        # bundled commands may require additional, workflow-specific variables.
+        for name in ('qwen-triage', 'qwen-scheduled-triage', 'qwen-invoke', 'qwen-review'):
+            original = bundled / f'{name}.toml'
+            path = installed / original.name
+            updated = re.sub(
+                r'!\{echo\s+\$([A-Z_]+)\}',
+                lambda match: f'@{{.qwen/action-context/{match.group(1)}.md}}',
+                original.read_text(),
+            )
+            path.write_text(updated)
+        PY
+        fi
         rm -rf .qwen/action-context
         mkdir -p .qwen/action-context
         for var in AVAILABLE_LABELS ISSUE_TITLE ISSUE_BODY ISSUES_TO_TRIAGE \
           TITLE DESCRIPTION EVENT_NAME IS_PULL_REQUEST ISSUE_NUMBER \
-          PULL_REQUEST_NUMBER REPOSITORY ADDITIONAL_CONTEXT; do
+          PULL_REQUEST_NUMBER REPOSITORY ADDITIONAL_CONTEXT GITHUB_ENV; do
           printf '%s' "${!var-}" > ".qwen/action-context/${var}.md"
         done
       env:
         GITHUB_ACTION_PATH: '${{ github.action_path }}'
+        APPROVAL_MODE: '${{ inputs.approval_mode }}'
 
     - name: 'Install pnpm'
       if: |-

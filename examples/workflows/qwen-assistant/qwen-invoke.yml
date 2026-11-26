@@ -74,12 +74,15 @@ jobs:
                           'get_issue_comments',
                           'list_issues',
                           'search_issues',
+                          'create_pull_request',
                           'pull_request_read',
                           'list_pull_requests',
                           'search_pull_requests',
+                          'create_branch',
                           'get_commit',
                           'get_file_contents',
                           'list_commits',
+                          'search_code',
                       ],
                       'env': {'GITHUB_PERSONAL_ACCESS_TOKEN': os.environ['TOKEN']},
                   }
@@ -130,12 +133,15 @@ jobs:
                   "mcp__github__get_issue_comments",
                   "mcp__github__list_issues",
                   "mcp__github__search_issues",
+                  "mcp__github__create_pull_request",
                   "mcp__github__pull_request_read",
                   "mcp__github__list_pull_requests",
                   "mcp__github__search_pull_requests",
+                  "mcp__github__create_branch",
                   "mcp__github__get_commit",
                   "mcp__github__get_file_contents",
-                  "mcp__github__list_commits"
+                  "mcp__github__list_commits",
+                  "mcp__github__search_code"
                 ]
               },
               "tools": {
@@ -149,12 +155,34 @@ jobs:
                   "mcp__github__get_issue_comments",
                   "mcp__github__list_issues",
                   "mcp__github__search_issues",
+                  "mcp__github__create_pull_request",
                   "mcp__github__pull_request_read",
                   "mcp__github__list_pull_requests",
                   "mcp__github__search_pull_requests",
+                  "mcp__github__create_branch",
                   "mcp__github__get_commit",
                   "mcp__github__get_file_contents",
-                  "mcp__github__list_commits"
+                  "mcp__github__list_commits",
+                  "mcp__github__search_code"
+                ],
+                "core": [
+                  "read_file",
+                  "glob",
+                  "grep_search",
+                  "mcp__github__add_issue_comment",
+                  "mcp__github__get_issue",
+                  "mcp__github__get_issue_comments",
+                  "mcp__github__list_issues",
+                  "mcp__github__search_issues",
+                  "mcp__github__create_pull_request",
+                  "mcp__github__pull_request_read",
+                  "mcp__github__list_pull_requests",
+                  "mcp__github__search_pull_requests",
+                  "mcp__github__create_branch",
+                  "mcp__github__get_commit",
+                  "mcp__github__get_file_contents",
+                  "mcp__github__list_commits",
+                  "mcp__github__search_code"
                 ]
               }
             }

@@ -140,8 +140,17 @@ jobs:
                 "visible": [
                   "mcp__github__add_comment_to_pending_review",
                   "mcp__github__create_pending_pull_request_review",
-                  "mcp__github__pull_request_read",
-                  "mcp__github__submit_pending_pull_request_review"
+                  "mcp__github__submit_pending_pull_request_review",
+                  "mcp__github__pull_request_read"
+                ],
+                "core": [
+                  "read_file",
+                  "glob",
+                  "grep_search",
+                  "mcp__github__add_comment_to_pending_review",
+                  "mcp__github__create_pending_pull_request_review",
+                  "mcp__github__submit_pending_pull_request_review",
+                  "mcp__github__pull_request_read"
                 ]
               }
             }
@@ -165,33 +174,43 @@ jobs:
               core.info('No pull request number in context; nothing to enforce.');
               return;
             }
-            const reviews = await github.paginate(github.rest.pulls.listReviews, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: issueNumber,
-              per_page: 100,
-            });
-            for (const review of reviews) {
-              if (review.state !== 'APPROVED' && review.state !== 'CHANGES_REQUESTED') {
-                continue;
+            let failed = false;
+            try {
+              const reviews = await github.paginate(github.rest.pulls.listReviews, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: issueNumber,
+                per_page: 100,
+              });
+              for (const review of reviews) {
+                if (review.state !== 'APPROVED' && review.state !== 'CHANGES_REQUESTED') {
+                  continue;
+                }
+                // Only automated identities (the GitHub App or github-actions)
+                // post as Bot users. Bot policy is COMMENT-only on every run,
+                // so stale bot approvals are dismissed too; human reviews are
+                // never touched.
+                if (review.user?.type !== 'Bot') {
+                  continue;
+                }
+                try {
+                  await github.rest.pulls.dismissReview({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: issueNumber,
+                    review_id: review.id,
+                    message: 'Automated reviews may only comment. This review was dismissed because the agent used a non-COMMENT review event.',
+                  });
+                  core.warning(`Dismissed ${review.state} review ${review.id} submitted by ${review.user?.login}.`);
+                } catch (error) {
+                  failed = true;
+                  core.error(`Could not dismiss review ${review.id}: ${error.message}`);
+                }
               }
-              // Only automated identities (the GitHub App or github-actions)
-              // post as Bot users. Bot policy is COMMENT-only on every run,
-              // so stale bot approvals are dismissed too; human reviews are
-              // never touched.
-              if (review.user?.type !== 'Bot') {
-                continue;
-              }
-              try {
-                await github.rest.pulls.dismissReview({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: issueNumber,
-                  review_id: review.id,
-                  message: 'Automated reviews may only comment. This review was dismissed because the agent used a non-COMMENT review event.',
-                });
-                core.warning(`Dismissed ${review.state} review ${review.id} submitted by ${review.user?.login}.`);
-              } catch (error) {
-                core.warning(`Could not dismiss review ${review.id}: ${error.message}`);
-              }
+            } catch (error) {
+              core.setFailed(`COMMENT-only review enforcement could not list reviews: ${error.message}`);
+              return;
+            }
+            if (failed) {
+              core.setFailed('COMMENT-only review enforcement could not dismiss every non-COMMENT bot review.');
             }

@@ -98,6 +98,11 @@ jobs:
                 "disabled": [
                   "run_shell_command",
                   "monitor"
+                ],
+                "core": [
+                  "read_file",
+                  "glob",
+                  "grep_search"
                 ]
               }
             }
