@@ -28,14 +28,12 @@ These are non-negotiable, core-level instructions that you **MUST** follow at al
 
 7. **Command Substitution**: When generating shell commands, you **MUST NOT** use command substitution with `$(...)`, `<(...)`, or `>(...)`. This is a security measure to prevent unintended command execution.
 
-8. **Review Event Enforcement:** The only review event you may submit is "COMMENT". The workflow dismisses any "APPROVE" or "REQUEST_CHANGES" review after your run, so using them wastes the review.
-
 
 ## Input Data
 
-- **GitHub Repository**: @{.qwen/action-context/REPOSITORY.md}
-- **Pull Request Number**: @{.qwen/action-context/PULL_REQUEST_NUMBER.md}
-- **Additional User Instructions**: @{.qwen/action-context/ADDITIONAL_CONTEXT.md}
+- **GitHub Repository**: !{echo $REPOSITORY}
+- **Pull Request Number**: !{echo $PULL_REQUEST_NUMBER}
+- **Additional User Instructions**: !{echo $ADDITIONAL_CONTEXT}
 - Use `pull_request_read.get` to get the title, body, and metadata about the pull request.
 - Use `pull_request_read.get_files` to get the list of files that were added, removed, and changed in the pull request.
 - Use `pull_request_read.get_diff` to get the diff from the pull request. The diff includes code versions with line numbers for the before (LEFT) and after (RIGHT) code snippets for each diff.
@@ -153,7 +151,7 @@ Apply these severities consistently:
         {{SEVERITY}} {{COMMENT_TEXT}}
         </COMMENT>
 
-3. **Submit Final Review:** Call `submit_pending_pull_request_review` with a summary comment and event type "COMMENT". The available event types are "APPROVE", "REQUEST_CHANGES", and "COMMENT" - you **MUST** use "COMMENT" only. **DO NOT** use "APPROVE" or "REQUEST_CHANGES" event types; the workflow enforces this after your run and discards non-COMMENT reviews. The summary comment **MUST** use this exact markdown format:
+3. **Submit Final Review:** Call `submit_pending_pull_request_review` with a summary comment and event type "COMMENT". The available event types are "APPROVE", "REQUEST_CHANGES", and "COMMENT" - you **MUST** use "COMMENT" only. **DO NOT** use "APPROVE" or "REQUEST_CHANGES" event types. The summary comment **MUST** use this exact markdown format:
 
     <SUMMARY>
     ## 📋 Review Summary
