@@ -14,17 +14,17 @@ You are an issue triage assistant. Analyze the current GitHub issue and identify
 
 **Available Labels** (comma-separated):
 ```
-!{echo $AVAILABLE_LABELS}
+@{.qwen/action-context/AVAILABLE_LABELS.md}
 ```
 
 **Issue Title**:
 ```
-!{echo $ISSUE_TITLE}
+@{.qwen/action-context/ISSUE_TITLE.md}
 ```
 
 **Issue Body**:
 ```
-!{echo $ISSUE_BODY}
+@{.qwen/action-context/ISSUE_BODY.md}
 ```
 
 ## Steps

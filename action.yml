@@ -160,6 +160,19 @@ runs:
         # Project skills load from .qwen/skills and .agents/skills in the
         # workspace; a checkout must not contribute agent instructions either.
         rm -rf .qwen/skills .agents/skills
+        # Materialize prompt context files for @{...} injection. In default
+        # approval mode the CLI hard-denies shell tools, which also blocks
+        # !{echo ...} prompt injections; @{} reads a workspace file through
+        # the tool-free file reader instead. Only variables the caller put
+        # in this step's env are written, and the fixed name prefix cannot
+        # collide with checked-out files.
+        rm -rf .qwen/action-context
+        mkdir -p .qwen/action-context
+        for var in AVAILABLE_LABELS ISSUE_TITLE ISSUE_BODY ISSUES_TO_TRIAGE \
+          TITLE DESCRIPTION EVENT_NAME IS_PULL_REQUEST ISSUE_NUMBER \
+          PULL_REQUEST_NUMBER REPOSITORY ADDITIONAL_CONTEXT; do
+          printf '%s' "${!var-}" > ".qwen/action-context/${var}.md"
+        done
       env:
         GITHUB_ACTION_PATH: '${{ github.action_path }}'
 
