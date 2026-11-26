@@ -247,8 +247,22 @@ runs:
         # cleaned up later
         TEMP_STDOUT="$(mktemp -p "${RUNNER_TEMP}" qwen-out.XXXXXXXXXX)"
         TEMP_STDERR="$(mktemp -p "${RUNNER_TEMP}" qwen-err.XXXXXXXXXX)"
+        # Remove the real API key from the agent's environment. The CLI only
+        # needs it to make API calls, so hand those to a loopback proxy that
+        # injects the Authorization header itself. The agent (and any tool it
+        # runs) only ever sees a per-run placeholder token.
+        PROXY_PID=""
+        PROXY_LOG="$(mktemp -p "${RUNNER_TEMP}" qwen-proxy.XXXXXXXXXX)"
+        PROXY_SCRIPT="$(mktemp -p "${RUNNER_TEMP}" qwen-proxy-script.XXXXXXXXXX.py)"
+        PROXY_PORT_FILE="$(mktemp -p "${RUNNER_TEMP}" qwen-proxy-port.XXXXXXXXXX)"
+        PROXY_NONCE="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')"
+        AGENT_OPENAI_API_KEY="qwen-action-$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
         function cleanup {
-          rm -f "${TEMP_STDOUT}" "${TEMP_STDERR}"
+          if [[ -n "${PROXY_PID}" ]]; then
+            kill "${PROXY_PID}" 2>/dev/null || true
+            wait "${PROXY_PID}" 2>/dev/null || true
+          fi
+          rm -f "${TEMP_STDOUT}" "${TEMP_STDERR}" "${PROXY_LOG}" "${PROXY_SCRIPT}" "${PROXY_PORT_FILE}"
         }
         trap cleanup EXIT
 
@@ -259,6 +273,120 @@ runs:
 
         # Keep track of whether we've failed
         FAILED=false
+
+        if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+          cat > "${PROXY_SCRIPT}" <<'PY'
+        import os
+        import sys
+        import urllib.error
+        import urllib.request
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        upstream = os.environ['UPSTREAM_BASE_URL'].rstrip('/')
+        api_key = os.environ['REAL_OPENAI_API_KEY']
+        placeholder = os.environ['AGENT_OPENAI_API_KEY']
+        nonce = os.environ['PROXY_NONCE']
+        port_file = sys.argv[1]
+
+        class Proxy(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                if self.path == '/__health':
+                    body = nonce.encode()
+                    self.send_response(200)
+                    self.send_header('Content-Length', str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                self._proxy()
+
+            def _proxy(self):
+                auth = self.headers.get('Authorization', '')
+                if auth not in (f'Bearer {placeholder}', placeholder):
+                    self.send_response(401)
+                    self.end_headers()
+                    return
+                length = int(self.headers.get('Content-Length') or 0)
+                body = self.rfile.read(length) if length else None
+                headers = {
+                    name: value
+                    for name, value in self.headers.items()
+                    if name.lower() not in ('host', 'authorization', 'content-length')
+                }
+                headers['Authorization'] = f'Bearer {api_key}'
+                request = urllib.request.Request(
+                    upstream + self.path, data=body, headers=headers, method=self.command
+                )
+                try:
+                    response = urllib.request.urlopen(request)
+                except urllib.error.HTTPError as error:
+                    response = error
+                except Exception:
+                    self.send_response(502)
+                    self.end_headers()
+                    return
+                self.send_response(response.status)
+                for name, value in response.headers.items():
+                    if name.lower() not in ('transfer-encoding', 'content-length', 'connection'):
+                        self.send_header(name, value)
+                self.end_headers()
+                # read1 returns as soon as any bytes are available, so
+                # streaming (SSE) responses are forwarded without buffering.
+                read_chunk = getattr(response, 'read1', None) or response.read
+                while True:
+                    chunk = read_chunk(65536)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+                response.close()
+
+            do_POST = _proxy
+            do_PUT = _proxy
+            do_DELETE = _proxy
+            do_PATCH = _proxy
+
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Proxy)
+        # Report the ephemeral port through a private file the caller created,
+        # never through a shared path a squatter could pre-write.
+        with open(port_file, 'w') as report:
+            report.write(str(server.server_address[1]))
+        server.serve_forever()
+        PY
+          # A reused runner may host a squatter that answers on loopback; the
+          # nonce health probe proves the port belongs to OUR proxy, and the
+          # PID check proves that proxy is still alive (same defences as the
+          # qwen-code verify lane).
+          UPSTREAM_BASE_URL="${OPENAI_BASE_URL}" \
+          REAL_OPENAI_API_KEY="${OPENAI_API_KEY}" \
+          AGENT_OPENAI_API_KEY="${AGENT_OPENAI_API_KEY}" \
+          PROXY_NONCE="${PROXY_NONCE}" \
+          python3 -u "${PROXY_SCRIPT}" "${PROXY_PORT_FILE}" > "${PROXY_LOG}" 2>&1 &
+          PROXY_PID=$!
+          PROXY_PORT=""
+          PROXY_READY=false
+          for _ in $(seq 1 50); do
+            PROXY_PORT="$(cat "${PROXY_PORT_FILE}" 2>/dev/null || true)"
+            if [[ "${PROXY_PORT}" =~ ^[0-9]+$ ]] &&
+              [[ "$(curl -fsS --max-time 1 "http://127.0.0.1:${PROXY_PORT}/__health" 2>/dev/null || true)" == "${PROXY_NONCE}" ]]; then
+              PROXY_READY=true
+              break
+            fi
+            if ! kill -0 "${PROXY_PID}" 2>/dev/null; then
+              echo "::error title=API proxy failed to start::$(cat "${PROXY_LOG}")"
+              exit 1
+            fi
+            sleep 0.1
+          done
+          if [[ "${PROXY_READY}" != true ]] || ! kill -0 "${PROXY_PID}" 2>/dev/null; then
+            echo "::error title=API proxy failed to start::Timed out waiting for the local API proxy health check."
+            exit 1
+          fi
+          export OPENAI_BASE_URL="http://127.0.0.1:${PROXY_PORT}"
+          export OPENAI_API_KEY="${AGENT_OPENAI_API_KEY}"
+        fi
 
         # Run Qwen Code with the provided prompt, using JSON output format
         if [[ "${DEBUG}" = true ]]; then
@@ -367,6 +495,38 @@ runs:
         SURFACE: 'GitHub'
         PROMPT: '${{ inputs.prompt }}'
         GH_WORKFLOW_NAME: '${{ steps.sanitize_workflow_name.outputs.gh_workflow_name }}'
+
+    - name: 'Sanitize artifacts'
+      if: |-
+        ${{ always() && inputs.upload_artifacts == 'true' }}
+      shell: 'bash'
+      run: |-
+        set -euo pipefail
+        # GitHub masks secrets in step logs but not in artifact files. Strip
+        # the API key from everything under qwen-artifacts/ before upload,
+        # even when the agent run failed.
+        if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+          exit 0
+        fi
+        mkdir -p qwen-artifacts
+        while IFS= read -r -d '' artifact_file; do
+          if LC_ALL=C grep -aqF -- "${OPENAI_API_KEY}" "${artifact_file}"; then
+            KEY="${OPENAI_API_KEY}" python3 - "${artifact_file}" <<'PY'
+        import os
+        import sys
+
+        path = sys.argv[1]
+        key = os.environ['KEY'].encode()
+        with open(path, 'rb') as artifact:
+            data = artifact.read()
+        with open(path, 'wb') as artifact:
+            artifact.write(data.replace(key, b'[REDACTED]'))
+        PY
+            echo "::warning title=Artifact redaction::Removed the API key from ${artifact_file} before upload."
+          fi
+        done < <(find qwen-artifacts -type f -print0)
+      env:
+        OPENAI_API_KEY: '${{ inputs.openai_api_key }}'
 
     - name: 'Upload Qwen Code outputs'
       if: |-
