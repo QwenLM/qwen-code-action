@@ -52,10 +52,45 @@ inputs:
     description: 'Whether to upload artifacts to the github action.'
     required: false
     default: 'false'
+  approval_mode:
+    description: |-
+      Tool approval mode passed to the Qwen Code `--approval-mode` flag.
+      Defaults to "yolo" (auto-approve every tool call) for backward
+      compatibility. Workflows that process untrusted input (issues, pull
+      requests, comments) should set this to "default", where tool calls
+      that are not read-only or explicitly allowed are denied instead of
+      auto-approved.
+    required: false
+    default: 'yolo'
+  extra_args:
+    description: |-
+      Additional CLI arguments appended to the qwen invocation, expanded by
+      the step shell. Caller-controlled only — never derive this from
+      untrusted event content. Use for flags such as --mcp-config, whose
+      servers are caller-supplied and bypass the workspace MCP approval gate.
+    required: false
+    default: ''
+  untrusted_input:
+    description: 'For qwen-review or qwen-invoke, isolate the agent so it can only reach the credential-holding model and GitHub MCP sidecars. Requires Docker.'
+    required: false
+    default: 'false'
+  preserve_workspace_config:
+    description: |-
+      Preserve checked-out .qwen settings, commands, skills, and .mcp.json /
+      .env files. Opt in only for trusted base-branch workspaces whose
+      configuration you intend the agent to load. Untrusted pull requests must
+      not set this. By default those files are cleared so a caller's settings
+      input is the sole project configuration.
+    required: false
+    default: 'false'
   use_pnpm:
     description: 'Whether or not to use pnpm instead of npm to install qwen-code'
     required: false
     default: 'false'
+  github_token:
+    description: 'Token for the untrusted-input GitHub MCP sidecar. The agent never receives it.'
+    required: false
+    default: ''
   skip_install:
     description: 'Skip installing Qwen Code. Use when the CLI is already pre-installed on the runner (e.g. self-hosted ECS runners).'
     required: false
@@ -113,14 +148,22 @@ runs:
         WORKFLOW_NAME: '${{ inputs.workflow_name }}'
 
     - name: 'Configure Qwen Code'
-      if: |-
-        ${{ inputs.settings != '' }}
       run: |-
-        mkdir -p .qwen/
-        echo "${SETTINGS}" > ".qwen/settings.json"
+        set -euo pipefail
+        mkdir -p .qwen
+        if [[ "${PRESERVE_WORKSPACE_CONFIG}" != 'true' ]]; then
+          # Drop checked-out agent configuration, including .qwenignore,
+          # which could otherwise hide the authoritative settings below.
+          # settings input is the authoritative project configuration.
+          rm -f .qwen/settings.json .mcp.json .env .qwen/.env .qwenignore
+        fi
+        if [[ -n "${SETTINGS}" ]]; then
+          printf '%s' "${SETTINGS}" > ".qwen/settings.json"
+        fi
       shell: 'bash'
       env:
         SETTINGS: '${{ inputs.settings }}'
+        PRESERVE_WORKSPACE_CONFIG: '${{ inputs.preserve_workspace_config }}'
 
     - name: 'Install Custom Commands'
       shell: 'bash'
@@ -128,8 +171,45 @@ runs:
         set -euo pipefail
         mkdir -p .qwen/commands
         cp -r "${GITHUB_ACTION_PATH}/.github/commands/"* .qwen/commands/
+        if [[ "${PRESERVE_WORKSPACE_CONFIG}" != 'true' ]]; then
+          rm -rf .qwen/skills .agents/skills .qwen/commands/custom
+        fi
+        # The bundled commands use these context files with @{...} rather than
+        # !{echo ...}, because default approval mode denies shell execution in
+        # CI. Keep the original commands for callers in YOLO mode; in other
+        # modes rewrite only this action's bundled commands, never anything
+        # supplied by a downstream consumer.
+        if [[ "${APPROVAL_MODE}" != 'yolo' ]]; then
+          python3 - "${GITHUB_ACTION_PATH}/.github/commands" .qwen/commands <<'PY'
+        import pathlib
+        import re
+        import sys
+
+        bundled = pathlib.Path(sys.argv[1])
+        installed = pathlib.Path(sys.argv[2])
+        # These workflows provide the complete context set below. Other
+        # bundled commands may require additional, workflow-specific variables.
+        for name in ('qwen-triage', 'qwen-scheduled-triage', 'qwen-invoke', 'qwen-review'):
+            original = bundled / f'{name}.toml'
+            path = installed / original.name
+            updated = re.sub(
+                r'!\{echo\s+\$([A-Z_]+)\}',
+                lambda match: f'@{{.qwen/action-context/{match.group(1)}.md}}',
+                original.read_text(),
+            )
+            path.write_text(updated)
+        PY
+        fi
+        rm -rf .qwen/action-context
+        mkdir -p .qwen/action-context
+        for var in AVAILABLE_LABELS ISSUE_TITLE ISSUE_BODY ISSUES_TO_TRIAGE \
+          TITLE DESCRIPTION EVENT_NAME IS_PULL_REQUEST ISSUE_NUMBER \
+          PULL_REQUEST_NUMBER REPOSITORY ADDITIONAL_CONTEXT GITHUB_ENV; do
+          printf '%s' "${!var-}" > ".qwen/action-context/${var}.md"
+        done
       env:
         GITHUB_ACTION_PATH: '${{ github.action_path }}'
+        APPROVAL_MODE: '${{ inputs.approval_mode }}'
 
     - name: 'Install pnpm'
       if: |-
@@ -215,13 +295,146 @@ runs:
         # cleaned up later
         TEMP_STDOUT="$(mktemp -p "${RUNNER_TEMP}" qwen-out.XXXXXXXXXX)"
         TEMP_STDERR="$(mktemp -p "${RUNNER_TEMP}" qwen-err.XXXXXXXXXX)"
+        # Remove the real API key from the agent's environment. The CLI only
+        # needs it to make API calls, so hand those to a loopback proxy that
+        # injects the Authorization header itself. The agent (and any tool it
+        # runs) only ever sees a per-run placeholder token.
+        PROXY_PID=""
+        PROXY_LOG="$(mktemp -p "${RUNNER_TEMP}" qwen-proxy.XXXXXXXXXX)"
+        PROXY_SCRIPT="$(mktemp -p "${RUNNER_TEMP}" qwen-proxy-script.XXXXXXXXXX.py)"
+        PROXY_PORT_FILE="$(mktemp -p "${RUNNER_TEMP}" qwen-proxy-port.XXXXXXXXXX)"
+        PROXY_NONCE="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')"
+        AGENT_OPENAI_API_KEY="qwen-action-$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
         function cleanup {
-          rm -f "${TEMP_STDOUT}" "${TEMP_STDERR}"
+          if [[ -n "${PROXY_PID}" ]]; then
+            kill "${PROXY_PID}" 2>/dev/null || true
+            wait "${PROXY_PID}" 2>/dev/null || true
+          fi
+          rm -f "${TEMP_STDOUT}" "${TEMP_STDERR}" "${PROXY_LOG}" "${PROXY_SCRIPT}" "${PROXY_PORT_FILE}"
         }
         trap cleanup EXIT
 
+        # Strip GitHub Actions request variables from the agent environment;
+        # nothing in the agent needs to mint OIDC or runtime tokens.
+        unset ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL \
+          ACTIONS_RUNTIME_TOKEN ACTIONS_RUNTIME_URL ACTIONS_CACHE_URL || true
+
         # Keep track of whether we've failed
         FAILED=false
+
+        if [[ "${UNTRUSTED_INPUT}" != "true" && -n "${OPENAI_API_KEY:-}" ]]; then
+          cat > "${PROXY_SCRIPT}" <<'PY'
+        import os
+        import sys
+        import urllib.error
+        import urllib.request
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        upstream = os.environ['UPSTREAM_BASE_URL'].rstrip('/')
+        api_key = os.environ['REAL_OPENAI_API_KEY']
+        placeholder = os.environ['AGENT_OPENAI_API_KEY']
+        nonce = os.environ['PROXY_NONCE']
+        port_file = sys.argv[1]
+
+        class Proxy(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                if self.path == '/__health':
+                    body = nonce.encode()
+                    self.send_response(200)
+                    self.send_header('Content-Length', str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                self._proxy()
+
+            def _proxy(self):
+                auth = self.headers.get('Authorization', '')
+                if auth not in (f'Bearer {placeholder}', placeholder):
+                    self.send_response(401)
+                    self.end_headers()
+                    return
+                length = int(self.headers.get('Content-Length') or 0)
+                body = self.rfile.read(length) if length else None
+                headers = {
+                    name: value
+                    for name, value in self.headers.items()
+                    if name.lower() not in ('host', 'authorization', 'content-length')
+                }
+                headers['Authorization'] = f'Bearer {api_key}'
+                request = urllib.request.Request(
+                    upstream + self.path, data=body, headers=headers, method=self.command
+                )
+                try:
+                    response = urllib.request.urlopen(request)
+                except urllib.error.HTTPError as error:
+                    response = error
+                except Exception:
+                    self.send_response(502)
+                    self.end_headers()
+                    return
+                self.send_response(response.status)
+                for name, value in response.headers.items():
+                    if name.lower() not in ('transfer-encoding', 'content-length', 'connection'):
+                        self.send_header(name, value)
+                self.end_headers()
+                # read1 returns as soon as any bytes are available, so
+                # streaming (SSE) responses are forwarded without buffering.
+                read_chunk = getattr(response, 'read1', None) or response.read
+                while True:
+                    chunk = read_chunk(65536)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+                response.close()
+
+            do_POST = _proxy
+            do_PUT = _proxy
+            do_DELETE = _proxy
+            do_PATCH = _proxy
+
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Proxy)
+        # Report the ephemeral port through a private file the caller created,
+        # never through a shared path a squatter could pre-write.
+        with open(port_file, 'w') as report:
+            report.write(str(server.server_address[1]))
+        server.serve_forever()
+        PY
+          # A reused runner may host a squatter that answers on loopback; the
+          # nonce health probe proves the port belongs to OUR proxy, and the
+          # PID check proves that proxy is still alive (same defences as the
+          # qwen-code verify lane).
+          UPSTREAM_BASE_URL="${OPENAI_BASE_URL}" \
+          REAL_OPENAI_API_KEY="${OPENAI_API_KEY}" \
+          AGENT_OPENAI_API_KEY="${AGENT_OPENAI_API_KEY}" \
+          PROXY_NONCE="${PROXY_NONCE}" \
+          python3 -u "${PROXY_SCRIPT}" "${PROXY_PORT_FILE}" > "${PROXY_LOG}" 2>&1 &
+          PROXY_PID=$!
+          PROXY_PORT=""
+          PROXY_READY=false
+          for _ in $(seq 1 50); do
+            PROXY_PORT="$(cat "${PROXY_PORT_FILE}" 2>/dev/null || true)"
+            if [[ "${PROXY_PORT}" =~ ^[0-9]+$ ]] &&
+              [[ "$(curl -fsS --max-time 1 "http://127.0.0.1:${PROXY_PORT}/__health" 2>/dev/null || true)" == "${PROXY_NONCE}" ]]; then
+              PROXY_READY=true
+              break
+            fi
+            if ! kill -0 "${PROXY_PID}" 2>/dev/null; then
+              echo "::error title=API proxy failed to start::$(cat "${PROXY_LOG}")"
+              exit 1
+            fi
+            sleep 0.1
+          done
+          if [[ "${PROXY_READY}" != true ]] || ! kill -0 "${PROXY_PID}" 2>/dev/null; then
+            echo "::error title=API proxy failed to start::Timed out waiting for the local API proxy health check."
+            exit 1
+          fi
+          export OPENAI_BASE_URL="http://127.0.0.1:${PROXY_PORT}"
+          export OPENAI_API_KEY="${AGENT_OPENAI_API_KEY}"
+        fi
 
         # Run Qwen Code with the provided prompt, using JSON output format
         if [[ "${DEBUG}" = true ]]; then
@@ -229,10 +442,20 @@ runs:
         fi
 
         # We capture stdout (JSON) to TEMP_STDOUT and stderr to TEMP_STDERR
-        if ! qwen --yolo --prompt "${PROMPT}" --channel=CI --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}"; then
-          FAILED=true
+        # EXTRA_ARGS is caller-supplied (workflow author territory): expand
+        # ${VAR} references and word-split it into flags. envsubst substitutes
+        # variables only — it never executes command substitutions, and the
+        # prompt itself is passed as one quoted argument, never re-parsed.
+        EXTRA_ARGS_EXPANDED="$(printf '%s' "${EXTRA_ARGS}" | envsubst)"
+        EXTRA_ARGV=()
+        if [[ -n "${EXTRA_ARGS_EXPANDED}" ]]; then
+          read -r -a EXTRA_ARGV <<< "${EXTRA_ARGS_EXPANDED}"
         fi
-
+        if [[ "${UNTRUSTED_INPUT}" == "true" ]]; then
+          "${QWEN_ACTION_PATH}/scripts/isolated-run.sh"
+        else
+          qwen --approval-mode "${APPROVAL_MODE}" "${EXTRA_ARGV[@]}" --prompt "${PROMPT}" --channel=CI --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}" || FAILED=true
+        fi
         if [[ "${DEBUG}" = true ]]; then
           echo "::: Start Qwen Code STDOUT :::"
           cat "${TEMP_STDOUT}"
@@ -313,6 +536,13 @@ runs:
         fi
       env:
         DEBUG: '${{ fromJSON(inputs.qwen_debug || false) }}'
+        APPROVAL_MODE: '${{ inputs.approval_mode }}'
+        EXTRA_ARGS: '${{ inputs.extra_args }}'
+        UNTRUSTED_INPUT: '${{ inputs.untrusted_input }}'
+        REVIEW_ONLY: '${{ inputs.workflow_name == ''qwen-review'' && ''true'' || ''false'' }}'
+        GITHUB_TOKEN: '${{ inputs.untrusted_input == ''true'' && inputs.github_token || '''' }}'
+        ISSUE_NUMBER: '${{ inputs.untrusted_input == ''true'' && (github.event.issue.number || github.event.pull_request.number) || '''' }}'
+        IS_PULL_REQUEST: '${{ !!github.event.pull_request }}'
         OPENAI_API_KEY: '${{ inputs.openai_api_key }}'
         OPENAI_BASE_URL: ${{ inputs.openai_base_url || 'https://dashscope.aliyuncs.com/compatible-mode/v1' }}
         OPENAI_MODEL: ${{ inputs.openai_model || 'qwen-coder-plus-latest' }}
@@ -320,10 +550,42 @@ runs:
         PROMPT: '${{ inputs.prompt }}'
         GH_WORKFLOW_NAME: '${{ steps.sanitize_workflow_name.outputs.gh_workflow_name }}'
 
+    - name: 'Sanitize artifacts'
+      if: |-
+        ${{ always() && inputs.upload_artifacts == 'true' }}
+      shell: 'bash'
+      run: |-
+        set -euo pipefail
+        # GitHub masks secrets in step logs but not in artifact files. Strip
+        # the API key from everything under qwen-artifacts/ before upload,
+        # even when the agent run failed.
+        if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+          exit 0
+        fi
+        mkdir -p qwen-artifacts
+        while IFS= read -r -d '' artifact_file; do
+          if LC_ALL=C grep -aqF -- "${OPENAI_API_KEY}" "${artifact_file}"; then
+            KEY="${OPENAI_API_KEY}" python3 - "${artifact_file}" <<'PY'
+        import os
+        import sys
+
+        path = sys.argv[1]
+        key = os.environ['KEY'].encode()
+        with open(path, 'rb') as artifact:
+            data = artifact.read()
+        with open(path, 'wb') as artifact:
+            artifact.write(data.replace(key, b'[REDACTED]'))
+        PY
+            echo "::warning title=Artifact redaction::Removed the API key from ${artifact_file} before upload."
+          fi
+        done < <(find qwen-artifacts -type f -print0)
+      env:
+        OPENAI_API_KEY: '${{ inputs.openai_api_key }}'
+
     - name: 'Upload Qwen Code outputs'
       if: |-
         ${{ inputs.upload_artifacts == 'true' }}
-      uses: 'actions/upload-artifact@v4' # ratchet:exclude
+      uses: 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02' # ratchet:actions/upload-artifact@v4
       with:
         name: 'qwen-output'
         path: 'qwen-artifacts/'

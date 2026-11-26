@@ -7,6 +7,13 @@ on:
         type: 'string'
         description: 'Any additional context from the request'
         required: false
+    secrets:
+      QWEN_API_KEY:
+        description: 'The API key for the Qwen Code API.'
+        required: false
+      APP_PRIVATE_KEY:
+        description: 'The private key of the GitHub App used for identity.'
+        required: false
 
 concurrency:
   group: '${{ github.workflow }}-review-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}'
@@ -22,7 +29,6 @@ jobs:
     timeout-minutes: 7
     permissions:
       contents: 'read'
-      id-token: 'write'
       issues: 'write'
       pull-requests: 'write'
     steps:
@@ -40,6 +46,12 @@ jobs:
 
       - name: 'Checkout repository'
         uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
+        with:
+          # Check out the trusted base, never the PR merge ref: the diff is
+          # fetched through the GitHub API instead, so PR-controlled files
+          # (QWEN.md, .qwen/) never land in the agent's workspace.
+          ref: '${{ github.event.pull_request.base.sha || github.sha }}'
+          persist-credentials: false
 
       - name: 'Run Qwen Code pull request review'
         uses: 'QwenLM/qwen-code-action@v1' # ratchet:exclude
@@ -59,6 +71,9 @@ jobs:
           qwen_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
           upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
           workflow_name: 'qwen-review'
+          approval_mode: 'default'
+          untrusted_input: 'true'
+          github_token: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           settings: |-
             {
               "model": {
@@ -69,35 +84,34 @@ jobs:
                 "target": "local",
                 "outfile": ".qwen/telemetry.log"
               },
-              "mcpServers": {
-                "github": {
-                  "command": "docker",
-                  "args": [
-                    "run",
-                    "-i",
-                    "--rm",
-                    "-e",
-                    "GITHUB_PERSONAL_ACCESS_TOKEN",
-                    "ghcr.io/github/github-mcp-server:v0.18.0"
-                  ],
-                  "includeTools": [
-                    "add_comment_to_pending_review",
-                    "create_pending_pull_request_review",
-                    "pull_request_read",
-                    "submit_pending_pull_request_review"
-                  ],
-                  "env": {
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
-                  }
-                }
+              "disableAllHooks": true,
+              "permissions": {
+                "allow": [
+                  "mcp__github__add_comment_to_pending_review",
+                  "mcp__github__create_pending_pull_request_review",
+                  "mcp__github__pull_request_read",
+                  "mcp__github__submit_pending_pull_request_review"
+                ]
               },
               "tools": {
+                "disabled": [
+                  "run_shell_command",
+                  "monitor"
+                ],
+                "visible": [
+                  "mcp__github__add_comment_to_pending_review",
+                  "mcp__github__create_pending_pull_request_review",
+                  "mcp__github__submit_pending_pull_request_review",
+                  "mcp__github__pull_request_read"
+                ],
                 "core": [
-                  "run_shell_command(cat)",
-                  "run_shell_command(echo)",
-                  "run_shell_command(grep)",
-                  "run_shell_command(head)",
-                  "run_shell_command(tail)"
+                  "read_file",
+                  "glob",
+                  "grep_search",
+                  "mcp__github__add_comment_to_pending_review",
+                  "mcp__github__create_pending_pull_request_review",
+                  "mcp__github__submit_pending_pull_request_review",
+                  "mcp__github__pull_request_read"
                 ]
               }
             }

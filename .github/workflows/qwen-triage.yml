@@ -7,6 +7,13 @@ on:
         type: 'string'
         description: 'Any additional context from the request'
         required: false
+    secrets:
+      QWEN_API_KEY:
+        description: 'The API key for the Qwen Code API.'
+        required: false
+      APP_PRIVATE_KEY:
+        description: 'The private key of the GitHub App used for identity.'
+        required: false
 
 concurrency:
   group: '${{ github.workflow }}-triage-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}'
@@ -22,10 +29,9 @@ jobs:
     timeout-minutes: 7
     outputs:
       available_labels: '${{ steps.get_labels.outputs.available_labels }}'
-      selected_labels: '${{ env.SELECTED_LABELS }}'
+      selected_labels: '${{ steps.parse_result.outputs.selected_labels }}'
     permissions:
       contents: 'read'
-      id-token: 'write'
       issues: 'read'
       pull-requests: 'read'
     steps:
@@ -73,6 +79,7 @@ jobs:
           qwen_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
           upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
           workflow_name: 'qwen-triage'
+          approval_mode: 'default'
           settings: |-
             {
               "model": {
@@ -83,13 +90,44 @@ jobs:
                 "target": "local",
                 "outfile": ".qwen/telemetry.log"
               },
+              "disableAllHooks": true,
+              "context": {
+                "fileName": "QWEN_ACTION_TRIAGE_CONTEXT.md"
+              },
               "tools": {
+                "disabled": [
+                  "run_shell_command",
+                  "monitor"
+                ],
                 "core": [
-                  "run_shell_command(echo)"
+                  "read_file",
+                  "glob",
+                  "grep_search"
                 ]
               }
             }
           prompt: '/qwen-triage'
+
+      - name: 'Parse triage result'
+        id: 'parse_result'
+        if: |-
+          ${{ steps.qwen_analysis.outcome == 'success' }}
+        env:
+          QWEN_RESPONSE: '${{ steps.qwen_analysis.outputs.summary }}'
+        run: |-
+          set -euo pipefail
+          # The agent only proposes labels in its text response. Validate the
+          # shape here before exposing it as a step output; the label job
+          # additionally filters against the repository's available labels.
+          SELECTED="$(printf '%s\n' "${QWEN_RESPONSE}" \
+            | sed -n 's/^SELECTED_LABELS=//p' \
+            | tail -n 1 \
+            | tr -d '\r')"
+          if [[ ! "${SELECTED}" =~ ^[A-Za-z0-9_,./:\ -]*$ ]]; then
+            echo "::warning title=Triage output rejected::Agent output did not match the expected SELECTED_LABELS format."
+            SELECTED=""
+          fi
+          echo "selected_labels=${SELECTED}" >> "${GITHUB_OUTPUT}"
 
   label:
     runs-on: 'ubuntu-latest'
