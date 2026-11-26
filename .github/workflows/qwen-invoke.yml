@@ -7,6 +7,13 @@ on:
         type: 'string'
         description: 'Any additional context from the request'
         required: false
+    secrets:
+      QWEN_API_KEY:
+        description: 'The API key for the Qwen Code API.'
+        required: false
+      APP_PRIVATE_KEY:
+        description: 'The private key of the GitHub App used for identity.'
+        required: false
 
 concurrency:
   group: '${{ github.workflow }}-invoke-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}'
@@ -21,7 +28,6 @@ jobs:
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'
-      id-token: 'write'
       issues: 'write'
       pull-requests: 'write'
     steps:
@@ -36,6 +42,54 @@ jobs:
           permission-contents: 'read'
           permission-issues: 'write'
           permission-pull-requests: 'write'
+
+      - name: 'Prepare GitHub MCP config'
+        shell: 'bash'
+        env:
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+        run: |-
+          set -euo pipefail
+          # Workspace settings MCP servers are approval-gated in non-YOLO
+          # modes; --mcp-config servers are caller-supplied and never gated.
+          # Write the token-bearing config outside the workspace so the
+          # agent's file tools cannot read it.
+          MCP_CONFIG_FILE="$(mktemp -p "${RUNNER_TEMP}" qwen-mcp.XXXXXXXXXX.json)"
+          chmod 600 "${MCP_CONFIG_FILE}"
+          TOKEN="${GITHUB_TOKEN}" python3 - "${MCP_CONFIG_FILE}" <<'PY'
+          import json
+          import os
+          import sys
+
+          config = {
+              'mcpServers': {
+                  'github': {
+                      'command': 'docker',
+                      'args': [
+                          'run', '-i', '--rm', '-e', 'GITHUB_PERSONAL_ACCESS_TOKEN',
+                          'ghcr.io/github/github-mcp-server@sha256:6aa543f565bc98d96106fdd80a0abdc0c7147c8ca7f4663a814ceecef1ccc6d3',
+                      ],
+                      'includeTools': [
+                          'add_issue_comment',
+                          'get_issue',
+                          'get_issue_comments',
+                          'list_issues',
+                          'search_issues',
+                          'pull_request_read',
+                          'list_pull_requests',
+                          'search_pull_requests',
+                          'get_commit',
+                          'get_file_contents',
+                          'list_commits',
+                          'search_code',
+                      ],
+                      'env': {'GITHUB_PERSONAL_ACCESS_TOKEN': os.environ['TOKEN']},
+                  }
+              }
+          }
+          with open(sys.argv[1], 'w') as out:
+              json.dump(config, out)
+          PY
+          echo "MCP_CONFIG_FILE=${MCP_CONFIG_FILE}" >> "${GITHUB_ENV}"
 
       - name: 'Run Qwen Code'
         id: 'run_qwen'
@@ -57,6 +111,8 @@ jobs:
           qwen_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
           upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
           workflow_name: 'qwen-invoke'
+          approval_mode: 'default'
+          extra_args: '--mcp-config ${MCP_CONFIG_FILE}'
           settings: |-
             {
               "model": {
@@ -67,49 +123,58 @@ jobs:
                 "target": "local",
                 "outfile": ".qwen/telemetry.log"
               },
-              "mcpServers": {
-                "github": {
-                  "command": "docker",
-                  "args": [
-                    "run",
-                    "-i",
-                    "--rm",
-                    "-e",
-                    "GITHUB_PERSONAL_ACCESS_TOKEN",
-                    "ghcr.io/github/github-mcp-server:v0.18.0"
-                  ],
-                  "includeTools": [
-                    "add_issue_comment",
-                    "get_issue",
-                    "get_issue_comments",
-                    "list_issues",
-                    "search_issues",
-                    "create_pull_request",
-                    "pull_request_read",
-                    "list_pull_requests",
-                    "search_pull_requests",
-                    "create_branch",
-                    "create_or_update_file",
-                    "delete_file",
-                    "fork_repository",
-                    "get_commit",
-                    "get_file_contents",
-                    "list_commits",
-                    "push_files",
-                    "search_code"
-                  ],
-                  "env": {
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
-                  }
-                }
+              "disableAllHooks": true,
+              "permissions": {
+                "allow": [
+                  "mcp__github__add_issue_comment",
+                  "mcp__github__get_issue",
+                  "mcp__github__get_issue_comments",
+                  "mcp__github__list_issues",
+                  "mcp__github__search_issues",
+                  "mcp__github__pull_request_read",
+                  "mcp__github__list_pull_requests",
+                  "mcp__github__search_pull_requests",
+                  "mcp__github__get_commit",
+                  "mcp__github__get_file_contents",
+                  "mcp__github__list_commits",
+                  "mcp__github__search_code"
+                ]
               },
               "tools": {
+                "disabled": [
+                  "run_shell_command",
+                  "monitor"
+                ],
+                "visible": [
+                  "mcp__github__add_issue_comment",
+                  "mcp__github__get_issue",
+                  "mcp__github__get_issue_comments",
+                  "mcp__github__list_issues",
+                  "mcp__github__search_issues",
+                  "mcp__github__pull_request_read",
+                  "mcp__github__list_pull_requests",
+                  "mcp__github__search_pull_requests",
+                  "mcp__github__get_commit",
+                  "mcp__github__get_file_contents",
+                  "mcp__github__list_commits",
+                  "mcp__github__search_code"
+                ],
                 "core": [
-                  "run_shell_command(cat)",
-                  "run_shell_command(echo)",
-                  "run_shell_command(grep)",
-                  "run_shell_command(head)",
-                  "run_shell_command(tail)"
+                  "read_file",
+                  "glob",
+                  "grep_search",
+                  "mcp__github__add_issue_comment",
+                  "mcp__github__get_issue",
+                  "mcp__github__get_issue_comments",
+                  "mcp__github__list_issues",
+                  "mcp__github__search_issues",
+                  "mcp__github__pull_request_read",
+                  "mcp__github__list_pull_requests",
+                  "mcp__github__search_pull_requests",
+                  "mcp__github__get_commit",
+                  "mcp__github__get_file_contents",
+                  "mcp__github__list_commits",
+                  "mcp__github__search_code"
                 ]
               }
             }

@@ -52,7 +52,8 @@ jobs:
         github.event.pull_request.head.repo.fork == false
       ) || (
         github.event_name == 'issues' &&
-        contains(fromJSON('["opened", "reopened"]'), github.event.action)
+        contains(fromJSON('["opened", "reopened"]'), github.event.action) &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association)
       ) || (
         github.event.sender.type == 'User' &&
         startsWith(github.event.comment.body || github.event.review.body || github.event.issue.body, '@qwencoder') &&
@@ -130,12 +131,13 @@ jobs:
     uses: './.github/workflows/qwen-review.yml'
     permissions:
       contents: 'read'
-      id-token: 'write'
       issues: 'write'
       pull-requests: 'write'
     with:
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
-    secrets: 'inherit'
+    secrets:
+      QWEN_API_KEY: '${{ secrets.QWEN_API_KEY }}'
+      APP_PRIVATE_KEY: '${{ secrets.APP_PRIVATE_KEY }}'
 
   triage:
     needs: 'dispatch'
@@ -144,12 +146,13 @@ jobs:
     uses: './.github/workflows/qwen-triage.yml'
     permissions:
       contents: 'read'
-      id-token: 'write'
       issues: 'write'
       pull-requests: 'write'
     with:
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
-    secrets: 'inherit'
+    secrets:
+      QWEN_API_KEY: '${{ secrets.QWEN_API_KEY }}'
+      APP_PRIVATE_KEY: '${{ secrets.APP_PRIVATE_KEY }}'
 
   invoke:
     needs: 'dispatch'
@@ -158,12 +161,13 @@ jobs:
     uses: './.github/workflows/qwen-invoke.yml'
     permissions:
       contents: 'read'
-      id-token: 'write'
       issues: 'write'
       pull-requests: 'write'
     with:
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
-    secrets: 'inherit'
+    secrets:
+      QWEN_API_KEY: '${{ secrets.QWEN_API_KEY }}'
+      APP_PRIVATE_KEY: '${{ secrets.APP_PRIVATE_KEY }}'
 
   fallthrough:
     needs:

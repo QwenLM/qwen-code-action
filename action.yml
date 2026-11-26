@@ -52,6 +52,33 @@ inputs:
     description: 'Whether to upload artifacts to the github action.'
     required: false
     default: 'false'
+  approval_mode:
+    description: |-
+      Tool approval mode passed to the Qwen Code `--approval-mode` flag.
+      Defaults to "yolo" (auto-approve every tool call) for backward
+      compatibility. Workflows that process untrusted input (issues, pull
+      requests, comments) should set this to "default", where tool calls
+      that are not read-only or explicitly allowed are denied instead of
+      auto-approved.
+    required: false
+    default: 'yolo'
+  extra_args:
+    description: |-
+      Additional CLI arguments appended to the qwen invocation, expanded by
+      the step shell. Caller-controlled only — never derive this from
+      untrusted event content. Use for flags such as --mcp-config, whose
+      servers are caller-supplied and bypass the workspace MCP approval gate.
+    required: false
+    default: ''
+  preserve_workspace_config:
+    description: |-
+      Preserve checked-out .qwen settings, commands, skills, and .mcp.json /
+      .env files. Opt in only for trusted base-branch workspaces whose
+      configuration you intend the agent to load. Untrusted pull requests must
+      not set this. By default those files are cleared so a caller's settings
+      input is the sole project configuration.
+    required: false
+    default: 'false'
   use_pnpm:
     description: 'Whether or not to use pnpm instead of npm to install qwen-code'
     required: false
@@ -113,14 +140,22 @@ runs:
         WORKFLOW_NAME: '${{ inputs.workflow_name }}'
 
     - name: 'Configure Qwen Code'
-      if: |-
-        ${{ inputs.settings != '' }}
       run: |-
-        mkdir -p .qwen/
-        echo "${SETTINGS}" > ".qwen/settings.json"
+        set -euo pipefail
+        mkdir -p .qwen
+        if [[ "${PRESERVE_WORKSPACE_CONFIG}" != 'true' ]]; then
+          # Drop checked-out agent configuration, including .qwenignore,
+          # which could otherwise hide the authoritative settings below.
+          # settings input is the authoritative project configuration.
+          rm -f .qwen/settings.json .mcp.json .env .qwen/.env .qwenignore
+        fi
+        if [[ -n "${SETTINGS}" ]]; then
+          printf '%s' "${SETTINGS}" > ".qwen/settings.json"
+        fi
       shell: 'bash'
       env:
         SETTINGS: '${{ inputs.settings }}'
+        PRESERVE_WORKSPACE_CONFIG: '${{ inputs.preserve_workspace_config }}'
 
     - name: 'Install Custom Commands'
       shell: 'bash'
@@ -128,8 +163,45 @@ runs:
         set -euo pipefail
         mkdir -p .qwen/commands
         cp -r "${GITHUB_ACTION_PATH}/.github/commands/"* .qwen/commands/
+        if [[ "${PRESERVE_WORKSPACE_CONFIG}" != 'true' ]]; then
+          rm -rf .qwen/skills .agents/skills .qwen/commands/custom
+        fi
+        # The bundled commands use these context files with @{...} rather than
+        # !{echo ...}, because default approval mode denies shell execution in
+        # CI. Keep the original commands for callers in YOLO mode; in other
+        # modes rewrite only this action's bundled commands, never anything
+        # supplied by a downstream consumer.
+        if [[ "${APPROVAL_MODE}" != 'yolo' ]]; then
+          python3 - "${GITHUB_ACTION_PATH}/.github/commands" .qwen/commands <<'PY'
+        import pathlib
+        import re
+        import sys
+
+        bundled = pathlib.Path(sys.argv[1])
+        installed = pathlib.Path(sys.argv[2])
+        # These workflows provide the complete context set below. Other
+        # bundled commands may require additional, workflow-specific variables.
+        for name in ('qwen-triage', 'qwen-scheduled-triage', 'qwen-invoke', 'qwen-review'):
+            original = bundled / f'{name}.toml'
+            path = installed / original.name
+            updated = re.sub(
+                r'!\{echo\s+\$([A-Z_]+)\}',
+                lambda match: f'@{{.qwen/action-context/{match.group(1)}.md}}',
+                original.read_text(),
+            )
+            path.write_text(updated)
+        PY
+        fi
+        rm -rf .qwen/action-context
+        mkdir -p .qwen/action-context
+        for var in AVAILABLE_LABELS ISSUE_TITLE ISSUE_BODY ISSUES_TO_TRIAGE \
+          TITLE DESCRIPTION EVENT_NAME IS_PULL_REQUEST ISSUE_NUMBER \
+          PULL_REQUEST_NUMBER REPOSITORY ADDITIONAL_CONTEXT GITHUB_ENV; do
+          printf '%s' "${!var-}" > ".qwen/action-context/${var}.md"
+        done
       env:
         GITHUB_ACTION_PATH: '${{ github.action_path }}'
+        APPROVAL_MODE: '${{ inputs.approval_mode }}'
 
     - name: 'Install pnpm'
       if: |-
@@ -220,6 +292,11 @@ runs:
         }
         trap cleanup EXIT
 
+        # Strip GitHub Actions request variables from the agent environment;
+        # nothing in the agent needs to mint OIDC or runtime tokens.
+        unset ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL \
+          ACTIONS_RUNTIME_TOKEN ACTIONS_RUNTIME_URL ACTIONS_CACHE_URL || true
+
         # Keep track of whether we've failed
         FAILED=false
 
@@ -229,7 +306,16 @@ runs:
         fi
 
         # We capture stdout (JSON) to TEMP_STDOUT and stderr to TEMP_STDERR
-        if ! qwen --yolo --prompt "${PROMPT}" --channel=CI --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}"; then
+        # EXTRA_ARGS is caller-supplied (workflow author territory): expand
+        # ${VAR} references and word-split it into flags. envsubst substitutes
+        # variables only — it never executes command substitutions, and the
+        # prompt itself is passed as one quoted argument, never re-parsed.
+        EXTRA_ARGS_EXPANDED="$(printf '%s' "${EXTRA_ARGS}" | envsubst)"
+        EXTRA_ARGV=()
+        if [[ -n "${EXTRA_ARGS_EXPANDED}" ]]; then
+          read -r -a EXTRA_ARGV <<< "${EXTRA_ARGS_EXPANDED}"
+        fi
+        if ! qwen --approval-mode "${APPROVAL_MODE}" "${EXTRA_ARGV[@]}" --prompt "${PROMPT}" --channel=CI --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}"; then
           FAILED=true
         fi
 
@@ -313,6 +399,8 @@ runs:
         fi
       env:
         DEBUG: '${{ fromJSON(inputs.qwen_debug || false) }}'
+        APPROVAL_MODE: '${{ inputs.approval_mode }}'
+        EXTRA_ARGS: '${{ inputs.extra_args }}'
         OPENAI_API_KEY: '${{ inputs.openai_api_key }}'
         OPENAI_BASE_URL: ${{ inputs.openai_base_url || 'https://dashscope.aliyuncs.com/compatible-mode/v1' }}
         OPENAI_MODEL: ${{ inputs.openai_model || 'qwen-coder-plus-latest' }}
@@ -323,7 +411,7 @@ runs:
     - name: 'Upload Qwen Code outputs'
       if: |-
         ${{ inputs.upload_artifacts == 'true' }}
-      uses: 'actions/upload-artifact@v4' # ratchet:exclude
+      uses: 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02' # ratchet:actions/upload-artifact@v4
       with:
         name: 'qwen-output'
         path: 'qwen-artifacts/'
