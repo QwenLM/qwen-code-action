@@ -142,6 +142,19 @@ jobs:
                 "disabled": [
                   "run_shell_command",
                   "monitor"
+                ],
+                "visible": [
+                  "mcp__github__add_issue_comment",
+                  "mcp__github__get_issue",
+                  "mcp__github__get_issue_comments",
+                  "mcp__github__list_issues",
+                  "mcp__github__search_issues",
+                  "mcp__github__pull_request_read",
+                  "mcp__github__list_pull_requests",
+                  "mcp__github__search_pull_requests",
+                  "mcp__github__get_commit",
+                  "mcp__github__get_file_contents",
+                  "mcp__github__list_commits"
                 ]
               }
             }
