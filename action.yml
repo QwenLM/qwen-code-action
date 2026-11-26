@@ -70,6 +70,10 @@ inputs:
       servers are caller-supplied and bypass the workspace MCP approval gate.
     required: false
     default: ''
+  untrusted_input:
+    description: 'For qwen-review or qwen-invoke, isolate the agent so it can only reach the credential-holding model and GitHub MCP sidecars. Requires Docker.'
+    required: false
+    default: 'false'
   preserve_workspace_config:
     description: |-
       Preserve checked-out .qwen settings, commands, skills, and .mcp.json /
@@ -83,6 +87,10 @@ inputs:
     description: 'Whether or not to use pnpm instead of npm to install qwen-code'
     required: false
     default: 'false'
+  github_token:
+    description: 'Token for the untrusted-input GitHub MCP sidecar. The agent never receives it.'
+    required: false
+    default: ''
   skip_install:
     description: 'Skip installing Qwen Code. Use when the CLI is already pre-installed on the runner (e.g. self-hosted ECS runners).'
     required: false
@@ -314,7 +322,7 @@ runs:
         # Keep track of whether we've failed
         FAILED=false
 
-        if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+        if [[ "${UNTRUSTED_INPUT}" != "true" && -n "${OPENAI_API_KEY:-}" ]]; then
           cat > "${PROXY_SCRIPT}" <<'PY'
         import os
         import sys
@@ -443,10 +451,11 @@ runs:
         if [[ -n "${EXTRA_ARGS_EXPANDED}" ]]; then
           read -r -a EXTRA_ARGV <<< "${EXTRA_ARGS_EXPANDED}"
         fi
-        if ! qwen --approval-mode "${APPROVAL_MODE}" "${EXTRA_ARGV[@]}" --prompt "${PROMPT}" --channel=CI --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}"; then
-          FAILED=true
+        if [[ "${UNTRUSTED_INPUT}" == "true" ]]; then
+          "${QWEN_ACTION_PATH}/scripts/isolated-run.sh"
+        else
+          qwen --approval-mode "${APPROVAL_MODE}" "${EXTRA_ARGV[@]}" --prompt "${PROMPT}" --channel=CI --output-format json 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}" || FAILED=true
         fi
-
         if [[ "${DEBUG}" = true ]]; then
           echo "::: Start Qwen Code STDOUT :::"
           cat "${TEMP_STDOUT}"
@@ -529,6 +538,11 @@ runs:
         DEBUG: '${{ fromJSON(inputs.qwen_debug || false) }}'
         APPROVAL_MODE: '${{ inputs.approval_mode }}'
         EXTRA_ARGS: '${{ inputs.extra_args }}'
+        UNTRUSTED_INPUT: '${{ inputs.untrusted_input }}'
+        REVIEW_ONLY: '${{ inputs.workflow_name == ''qwen-review'' && ''true'' || ''false'' }}'
+        GITHUB_TOKEN: '${{ inputs.untrusted_input == ''true'' && inputs.github_token || '''' }}'
+        ISSUE_NUMBER: '${{ inputs.untrusted_input == ''true'' && (github.event.issue.number || github.event.pull_request.number) || '''' }}'
+        IS_PULL_REQUEST: '${{ !!github.event.pull_request }}'
         OPENAI_API_KEY: '${{ inputs.openai_api_key }}'
         OPENAI_BASE_URL: ${{ inputs.openai_base_url || 'https://dashscope.aliyuncs.com/compatible-mode/v1' }}
         OPENAI_MODEL: ${{ inputs.openai_model || 'qwen-coder-plus-latest' }}

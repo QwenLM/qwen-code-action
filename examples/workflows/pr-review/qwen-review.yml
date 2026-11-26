@@ -53,46 +53,6 @@ jobs:
           ref: '${{ github.event.pull_request.base.sha || github.sha }}'
           persist-credentials: false
 
-      - name: 'Prepare GitHub MCP config'
-        shell: 'bash'
-        env:
-          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-        run: |-
-          set -euo pipefail
-          # Workspace settings MCP servers are approval-gated in non-YOLO
-          # modes; --mcp-config servers are caller-supplied and never gated.
-          # Write the token-bearing config outside the workspace so the
-          # agent's file tools cannot read it.
-          MCP_CONFIG_FILE="$(mktemp -p "${RUNNER_TEMP}" qwen-mcp.XXXXXXXXXX.json)"
-          chmod 600 "${MCP_CONFIG_FILE}"
-          TOKEN="${GITHUB_TOKEN}" python3 - "${MCP_CONFIG_FILE}" <<'PY'
-          import json
-          import os
-          import sys
-
-          config = {
-              'mcpServers': {
-                  'github': {
-                      'command': 'docker',
-                      'args': [
-                          'run', '-i', '--rm', '-e', 'GITHUB_PERSONAL_ACCESS_TOKEN',
-                          'ghcr.io/github/github-mcp-server@sha256:6aa543f565bc98d96106fdd80a0abdc0c7147c8ca7f4663a814ceecef1ccc6d3',
-                      ],
-                      'includeTools': [
-                          'add_comment_to_pending_review',
-                          'create_pending_pull_request_review',
-                          'pull_request_read',
-                          'submit_pending_pull_request_review',
-                      ],
-                      'env': {'GITHUB_PERSONAL_ACCESS_TOKEN': os.environ['TOKEN']},
-                  }
-              }
-          }
-          with open(sys.argv[1], 'w') as out:
-              json.dump(config, out)
-          PY
-          echo "MCP_CONFIG_FILE=${MCP_CONFIG_FILE}" >> "${GITHUB_ENV}"
-
       - name: 'Run Qwen Code pull request review'
         uses: 'QwenLM/qwen-code-action@v1' # ratchet:exclude
         id: 'qwen_pr_review'
@@ -112,7 +72,8 @@ jobs:
           upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
           workflow_name: 'qwen-review'
           approval_mode: 'default'
-          extra_args: '--mcp-config ${MCP_CONFIG_FILE}'
+          untrusted_input: 'true'
+          github_token: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           settings: |-
             {
               "model": {
@@ -155,62 +116,3 @@ jobs:
               }
             }
           prompt: '/qwen-review'
-
-      - name: 'Enforce COMMENT-only reviews'
-        if: |-
-          ${{ always() && steps.qwen_pr_review.outcome != 'skipped' }}
-        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # ratchet:actions/github-script@v7
-        env:
-          PULL_REQUEST_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
-        with:
-          github-token: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          script: |-
-            // The prompt tells the agent to submit COMMENT reviews only; this
-            // is the code-level gate. Any APPROVE / REQUEST_CHANGES review the
-            // bot submitted is dismissed, so an injected agent cannot approve
-            // a PR or block it with requested changes.
-            const issueNumber = Number(process.env.PULL_REQUEST_NUMBER);
-            if (!issueNumber) {
-              core.info('No pull request number in context; nothing to enforce.');
-              return;
-            }
-            let failed = false;
-            try {
-              const reviews = await github.paginate(github.rest.pulls.listReviews, {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: issueNumber,
-                per_page: 100,
-              });
-              for (const review of reviews) {
-                if (review.state !== 'APPROVED' && review.state !== 'CHANGES_REQUESTED') {
-                  continue;
-                }
-                // Only automated identities (the GitHub App or github-actions)
-                // post as Bot users. Bot policy is COMMENT-only on every run,
-                // so stale bot approvals are dismissed too; human reviews are
-                // never touched.
-                if (review.user?.type !== 'Bot') {
-                  continue;
-                }
-                try {
-                  await github.rest.pulls.dismissReview({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    pull_number: issueNumber,
-                    review_id: review.id,
-                    message: 'Automated reviews may only comment. This review was dismissed because the agent used a non-COMMENT review event.',
-                  });
-                  core.warning(`Dismissed ${review.state} review ${review.id} submitted by ${review.user?.login}.`);
-                } catch (error) {
-                  failed = true;
-                  core.error(`Could not dismiss review ${review.id}: ${error.message}`);
-                }
-              }
-            } catch (error) {
-              core.setFailed(`COMMENT-only review enforcement could not list reviews: ${error.message}`);
-              return;
-            }
-            if (failed) {
-              core.setFailed('COMMENT-only review enforcement could not dismiss every non-COMMENT bot review.');
-            }
